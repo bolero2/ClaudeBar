@@ -124,6 +124,7 @@ struct MCPServerInfo: Identifiable {
     let transport: String      // "stdio", "sse", "http"
     var enabled: Bool
     var projectPath: String?   // for project-scoped servers
+    var toggleable: Bool = true   // inline project servers can't be toggled
 }
 
 // MARK: - Account

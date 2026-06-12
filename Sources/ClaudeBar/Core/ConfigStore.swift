@@ -35,19 +35,26 @@ struct ConfigStore {
     // MARK: mcpServers (global)
 
     func globalMCPServers() -> [MCPServerInfo] {
-        guard let servers = root["mcpServers"] as? [String: Any] else { return [] }
-        return servers.map { name, raw in
+        var out: [MCPServerInfo] = []
+        let servers = root["mcpServers"] as? [String: Any] ?? [:]
+        for (name, raw) in servers {
             let cfg = raw as? [String: Any] ?? [:]
-            return MCPServerInfo(
-                name: name,
-                scope: .global,
+            out.append(MCPServerInfo(
+                name: name, scope: .global,
                 command: Self.commandSummary(cfg),
                 transport: cfg["type"] as? String ?? "stdio",
-                enabled: true,            // global servers are always loaded
-                projectPath: nil
-            )
+                enabled: true, projectPath: nil, toggleable: true))
         }
-        .sorted { $0.name < $1.name }
+        // Servers we've disabled live in our sidecar file, not in mcpServers.
+        for (name, raw) in MCPService.disabledGlobalServers() {
+            let cfg = raw as? [String: Any] ?? [:]
+            out.append(MCPServerInfo(
+                name: name, scope: .global,
+                command: Self.commandSummary(cfg),
+                transport: cfg["type"] as? String ?? "stdio",
+                enabled: false, projectPath: nil, toggleable: true))
+        }
+        return out.sorted { $0.name < $1.name }
     }
 
     // MARK: projects
@@ -81,19 +88,21 @@ struct ConfigStore {
             for name in enabled {
                 out.append(MCPServerInfo(name: name, scope: .project,
                                          command: ".mcp.json", transport: "stdio",
-                                         enabled: true, projectPath: path))
+                                         enabled: true, projectPath: path, toggleable: true))
             }
             for name in disabled {
                 out.append(MCPServerInfo(name: name, scope: .project,
                                          command: ".mcp.json", transport: "stdio",
-                                         enabled: false, projectPath: path))
+                                         enabled: false, projectPath: path, toggleable: true))
             }
+            // Inline project servers have no enable/disable list, so they are
+            // shown but not toggleable from here.
             for (name, cfg) in inline {
                 let c = cfg as? [String: Any] ?? [:]
                 out.append(MCPServerInfo(name: name, scope: .project,
                                          command: Self.commandSummary(c),
                                          transport: c["type"] as? String ?? "stdio",
-                                         enabled: true, projectPath: path))
+                                         enabled: true, projectPath: path, toggleable: false))
             }
         }
         return out.sorted { ($0.projectPath ?? "") < ($1.projectPath ?? "") }
