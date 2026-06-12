@@ -86,6 +86,17 @@ enum Loc {
         "새 세션 · 권한 건너뛰기": "New session · skip permissions",
         "Claude Code를 시작할 디렉토리를 선택하세요": "Choose a directory to start Claude Code in",
 
+        // Updates
+        "앱 업데이트": "App updates", "현재 버전": "Current version",
+        "실행 시 업데이트 확인": "Check for updates on launch",
+        "지금 업데이트 확인": "Check for updates now", "확인 중…": "Checking…",
+        "최신 버전입니다": "You're up to date", "새 버전이 있습니다": "A new version is available",
+        "업데이트하기": "Update", "나중에": "Later", "확인": "OK",
+        "업데이트 확인 실패": "Update check failed",
+        "네트워크 또는 GitHub 응답을 확인하세요.": "Check your network or GitHub status.",
+        "업데이트 실패": "Update failed",
+        "개발 빌드에서는 릴리즈 페이지로 이동합니다.": "Dev builds open the releases page.",
+
         // Notifications
         "입력 대기 중": "Waiting for input", "컨텍스트 한도 임박": "Context limit approaching",
         "사용 한도 임박": "Usage limit approaching",

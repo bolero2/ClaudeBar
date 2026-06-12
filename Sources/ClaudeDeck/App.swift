@@ -26,6 +26,23 @@ enum Main {
             print("raise \(args[i + 1]): \(r)")
             return
         }
+        if args.contains("--check-update") {
+            let sem = DispatchSemaphore(value: 0)
+            Task.detached {
+                let cur = UpdateService.currentVersion
+                if let r = await UpdateService.latestRelease() {
+                    let newer = UpdateService.isNewer(r.version, than: cur)
+                    print("current=\(cur) latest=\(r.tag)(\(r.version)) newer=\(newer)")
+                    print("  zip=\(r.zipURL.absoluteString)")
+                    print("  notes=\(r.notes.prefix(60).replacingOccurrences(of: "\n", with: " "))…")
+                } else {
+                    print("최신 릴리즈 조회 실패 (네트워크/레이트리밋/에셋 누락)")
+                }
+                sem.signal()
+            }
+            sem.wait()
+            return
+        }
         if args.contains("--ratelimit") {
             let sem = DispatchSemaphore(value: 0)
             Task.detached {
@@ -132,6 +149,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         // Launch straight into the dashboard window (e.g. `open -a ClaudeDeck --args --dashboard`).
         if CommandLine.arguments.contains("--dashboard") {
             openDashboard()
+        }
+
+        // Check GitHub Releases for a newer version (prompts the user if found).
+        // A short delay lets the menu bar settle before any update dialog.
+        if AppSettings.shared.autoCheckUpdates {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                AppState.shared.checkForUpdates(userInitiated: false)
+            }
         }
     }
 

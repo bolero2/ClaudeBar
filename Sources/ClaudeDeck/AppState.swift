@@ -20,6 +20,7 @@ final class AppState: ObservableObject {
     @Published var account: Account?
     @Published var lastRefresh: Date?
     @Published var isRefreshing = false
+    @Published var isCheckingUpdate = false
 
     /// Wired up by `AppDelegate` to open the full dashboard window.
     var onOpenDashboard: (() -> Void)?
@@ -370,5 +371,83 @@ final class AppState: ObservableObject {
     func copyPath(_ cwd: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(cwd, forType: .string)
+    }
+
+    // MARK: - Self-update (GitHub Releases)
+
+    /// Checks for a newer release. On launch (`userInitiated == false`) it stays
+    /// silent unless an update exists; a manual check also reports up-to-date /
+    /// errors. On confirmation it downloads, swaps the bundle, and relaunches.
+    func checkForUpdates(userInitiated: Bool) {
+        guard !isCheckingUpdate else { return }
+        // On launch, only the installed .app can self-update; skip the dev binary.
+        guard userInitiated || UpdateService.canSelfUpdate else { return }
+        isCheckingUpdate = true
+        Task {
+            let release = await UpdateService.latestRelease()
+            isCheckingUpdate = false
+            guard let release else {
+                if userInitiated {
+                    showUpdateInfo(L("업데이트 확인 실패"),
+                                   L("네트워크 또는 GitHub 응답을 확인하세요."))
+                }
+                return
+            }
+            guard UpdateService.isNewer(release.version, than: UpdateService.currentVersion) else {
+                if userInitiated {
+                    showUpdateInfo(L("최신 버전입니다"),
+                                   "\(L("현재 버전")) \(UpdateService.currentVersion)")
+                }
+                return
+            }
+            promptAndInstall(release)
+        }
+    }
+
+    /// Prompts the user; on confirmation downloads + installs + relaunches.
+    private func promptAndInstall(_ release: UpdateService.Release) {
+        let alert = NSAlert()
+        if let icon = Self.appIcon { alert.icon = icon }
+        alert.messageText = "\(L("새 버전이 있습니다")) — \(release.tag)"
+        let notes = release.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        var info = "\(L("현재 버전")) \(UpdateService.currentVersion) → \(release.version)"
+        if !notes.isEmpty { info += "\n\n" + String(notes.prefix(500)) }
+        if !UpdateService.canSelfUpdate {
+            info += "\n\n" + L("개발 빌드에서는 릴리즈 페이지로 이동합니다.")
+        }
+        alert.informativeText = info
+        alert.addButton(withTitle: L("업데이트하기"))
+        alert.addButton(withTitle: L("나중에"))
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        // Dev binary: can't swap a bundle — open the releases page instead.
+        guard UpdateService.canSelfUpdate else {
+            if let url = URL(string: "https://github.com/\(UpdateService.repo)/releases/latest") {
+                NSWorkspace.shared.open(url)
+            }
+            return
+        }
+
+        isCheckingUpdate = true
+        Task {
+            let error = await UpdateService.downloadAndInstall(release)
+            isCheckingUpdate = false
+            if let error {
+                showUpdateInfo(L("업데이트 실패"), error)
+            } else {
+                NSApp.terminate(nil)   // helper swaps the bundle and relaunches
+            }
+        }
+    }
+
+    private func showUpdateInfo(_ title: String, _ body: String) {
+        let alert = NSAlert()
+        if let icon = Self.appIcon { alert.icon = icon }
+        alert.messageText = title
+        alert.informativeText = body
+        alert.addButton(withTitle: L("확인"))
+        NSApp.activate(ignoringOtherApps: true)
+        _ = alert.runModal()
     }
 }

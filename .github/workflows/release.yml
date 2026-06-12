@@ -22,6 +22,8 @@ jobs:
 
       - name: Build ClaudeDeck.app
         run: ./scripts/make-app.sh
+        env:
+          CLAUDEDECK_VERSION: ${{ github.ref_name }}   # tag drives the bundle version
 
       - name: Zip bundle
         run: ditto -c -k --keepParent ClaudeDeck.app ClaudeDeck.zip

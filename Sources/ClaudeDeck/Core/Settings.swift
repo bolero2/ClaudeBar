@@ -18,6 +18,7 @@ final class AppSettings: ObservableObject {
         static let pinnedProjects = "pinnedProjects"
         static let language = "language"                      // "en" | "ko"
         static let compactTemplates = "compactTemplates"      // JSON-encoded [CompactTemplate]
+        static let autoCheckUpdates = "autoCheckUpdates"      // check GitHub releases on launch
     }
 
     /// Built-in `/compact` presets, used until the user edits the list. The first
@@ -43,6 +44,7 @@ final class AppSettings: ObservableObject {
     @Published var preferredTerminal: String { didSet { d.set(preferredTerminal, forKey: Key.preferredTerminal) } }
     @Published var pinnedProjects: [String] { didSet { d.set(pinnedProjects, forKey: Key.pinnedProjects) } }
     @Published var language: String { didSet { d.set(language, forKey: Key.language) } }
+    @Published var autoCheckUpdates: Bool { didSet { d.set(autoCheckUpdates, forKey: Key.autoCheckUpdates) } }
     @Published var compactTemplates: [CompactTemplate] {
         didSet {
             if let data = try? JSONEncoder().encode(compactTemplates) {
@@ -88,6 +90,7 @@ final class AppSettings: ObservableObject {
         preferredTerminal = (d.string(forKey: Key.preferredTerminal)) ?? "auto"
         pinnedProjects = (d.array(forKey: Key.pinnedProjects) as? [String]) ?? []
         language = (d.string(forKey: Key.language)) ?? Loc.systemDefault
+        autoCheckUpdates = (d.object(forKey: Key.autoCheckUpdates) as? Bool) ?? true
         if let data = d.data(forKey: Key.compactTemplates),
            let decoded = try? JSONDecoder().decode([CompactTemplate].self, from: data) {
             compactTemplates = decoded

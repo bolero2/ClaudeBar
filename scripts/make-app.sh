@@ -8,7 +8,15 @@ cd "$(dirname "$0")/.."
 APP_NAME="ClaudeDeck"
 DISPLAY_NAME="ClaudeDeck"
 BUNDLE_ID="com.claudedeck.app"
-VERSION="1.0.0"
+# Version: from $CLAUDEDECK_VERSION (CI sets it to the git tag), else the latest
+# tag, else 1.0.0. A leading "v" is stripped. Drives CFBundleShortVersionString,
+# which the in-app updater compares against the latest GitHub release.
+VERSION="${CLAUDEDECK_VERSION:-}"
+VERSION="${VERSION#v}"
+if [ -z "$VERSION" ]; then
+    VERSION="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')"
+fi
+VERSION="${VERSION:-1.0.0}"
 BUILD="1"
 
 echo "▶︎ swift build -c release"

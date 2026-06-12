@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @EnvironmentObject var state: AppState
     @ObservedObject private var settings = AppSettings.shared
 
     var body: some View {
@@ -49,6 +50,30 @@ struct SettingsView: View {
 
                 section(L("compact 템플릿")) {
                     CompactTemplatesEditor(settings: settings)
+                }
+
+                section(L("앱 업데이트")) {
+                    HStack {
+                        Text(L("현재 버전")).font(.system(size: 12))
+                        Spacer()
+                        Text(UpdateService.currentVersion)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                    toggle(L("실행 시 업데이트 확인"), $settings.autoCheckUpdates)
+                    Button {
+                        state.checkForUpdates(userInitiated: true)
+                    } label: {
+                        HStack(spacing: 6) {
+                            if state.isCheckingUpdate {
+                                ProgressView().controlSize(.mini)
+                            }
+                            Text(state.isCheckingUpdate ? L("확인 중…") : L("지금 업데이트 확인"))
+                                .font(.system(size: 12))
+                        }
+                    }
+                    .disabled(state.isCheckingUpdate)
                 }
 
                 section(L("시스템")) {
