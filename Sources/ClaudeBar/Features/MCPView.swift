@@ -33,12 +33,37 @@ struct MCPView: View {
                         }
                     }
                 }
+
+                Text("토글은 새로 시작하는 세션부터 적용됩니다. (실행 중 세션은 영향 없음)")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 8)
+                    .padding(.top, 6)
             }
             .padding(8)
     }
 }
 
+/// A compact on/off switch drawn with plain shapes so it renders consistently
+/// (incl. in offscreen ImageRenderer screenshots, unlike a native `Toggle`).
+private struct MiniSwitch: View {
+    let isOn: Bool
+    var body: some View {
+        ZStack(alignment: isOn ? .trailing : .leading) {
+            Capsule()
+                .fill(isOn ? Color.green : Color.secondary.opacity(0.35))
+                .frame(width: 30, height: 18)
+            Circle()
+                .fill(.white)
+                .frame(width: 14, height: 14)
+                .padding(2)
+        }
+        .animation(.easeInOut(duration: 0.15), value: isOn)
+    }
+}
+
 private struct MCPRow: View {
+    @EnvironmentObject var state: AppState
     let server: MCPServerInfo
     var body: some View {
         HStack(spacing: 8) {
@@ -64,9 +89,17 @@ private struct MCPRow: View {
                     .truncationMode(.middle)
             }
             Spacer()
-            Text(server.enabled ? "활성" : "비활성")
-                .font(.system(size: 10))
-                .foregroundStyle(server.enabled ? .green : .secondary)
+            if server.toggleable {
+                Button { state.toggleMCP(server) } label: {
+                    MiniSwitch(isOn: server.enabled)
+                }
+                .buttonStyle(.plain)
+                .help(server.enabled ? "클릭: 끄기" : "클릭: 켜기")
+            } else {
+                Text("항상 켜짐")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+            }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
