@@ -96,7 +96,6 @@ final class AppState: ObservableObject {
                 self.lastRefresh = Date()
                 self.isRefreshing = false
                 self.evaluateSessionNotifications(sessions)
-                self.processPromptQueues(sessions)
             }
         }
     }
@@ -322,50 +321,77 @@ final class AppState: ObservableObject {
         return NSImage(contentsOf: url)
     }()
 
-    // MARK: - Scheduled prompt queue
-
-    private var queueLastInjection: [String: Date] = [:]
+    // MARK: - Scheduled prompt queue (screen-driven auto-injector)
 
     func isQueueRunning(_ sessionId: String) -> Bool { runningQueues.contains(sessionId) }
 
-    /// Arms a session's queue so its prompts auto-inject when the session idles.
+    /// Arms a session's queue and spawns the injector loop. The loop watches the
+    /// terminal's *visible contents* (not the JSONL mtime, which Claude Code
+    /// buffers) to inject one prompt at a time, only while Claude is idle.
     func startQueue(_ sessionId: String) {
         guard !AppSettings.shared.queue(for: sessionId).isEmpty else { return }
+        guard !runningQueues.contains(sessionId) else { return }
         runningQueues.insert(sessionId)
+        Task { await self.runQueueLoop(sessionId) }
     }
 
+    /// Disarms; the running loop observes `runningQueues` and exits on its own.
     func stopQueue(_ sessionId: String) {
         runningQueues.remove(sessionId)
     }
 
-    /// For each armed, live, idle session, injects the next queued prompt once
-    /// the previous one has been consumed (new activity seen since last inject).
-    /// Internal (not private) so the headless `--test-orchestration` diagnostic
-    /// can drive it directly; only `refreshSessions` calls it in production.
-    func processPromptQueues(_ sessions: [Session]) {
-        guard !runningQueues.isEmpty else { return }
+    /// The live process currently backing a queued session (nil once it ends).
+    private func liveProcess(for sessionId: String) -> LiveProcess? {
+        sessions.first(where: { $0.id == sessionId })?.live
+    }
+
+    /// Drives one armed session: wait-for-idle → inject next → let it start →
+    /// (next iteration waits for idle again). Exits when the queue drains, the
+    /// session ends, or the user stops it. `onStep` reports progress (used by the
+    /// `--queue-run` diagnostic; nil in the app).
+    func runQueueLoop(_ sid: String, onStep: (@Sendable (String) -> Void)? = nil) async {
         let settings = AppSettings.shared
-        for s in sessions where s.live != nil {
-            let id = s.id
-            guard runningQueues.contains(id) else { continue }
-            guard !settings.queue(for: id).isEmpty else { runningQueues.remove(id); continue }
-            // Inject only when the session is idle (task finished, awaiting input).
-            guard s.status == .waiting else { continue }
-            // And only after the previously injected prompt produced activity,
-            // so we never fire twice for the same idle window.
-            if let last = queueLastInjection[id], s.lastActivity <= last { continue }
-            guard let next = settings.dequeueFirst(id), let live = s.live else {
-                runningQueues.remove(id); continue
+        while runningQueues.contains(sid), !settings.queue(for: sid).isEmpty {
+            guard let live = liveProcess(for: sid) else {
+                onStep?("세션 종료 — 중단"); break
             }
-            queueLastInjection[id] = Date()
-            Task.detached(priority: .userInitiated) {
-                _ = TerminalActivator.injectText(live, text: next.text)
+            // 1. Wait until Claude shows the idle input prompt (stable).
+            onStep?("유휴 대기…")
+            guard await waitForState(.idle, live, sid: sid, stable: 2, pollSec: 2, timeoutSec: 600) else {
+                if !runningQueues.contains(sid) { break }    // stopped
+                onStep?("유휴 대기 타임아웃 — 재시도"); continue
             }
-            if settings.queue(for: id).isEmpty { runningQueues.remove(id) }
+            guard runningQueues.contains(sid), let next = settings.dequeueFirst(sid) else { break }
+            // 2. Inject the prompt (types + submits).
+            let text = next.text
+            let r = await Task.detached { TerminalActivator.injectText(live, text: text) }.value
+            onStep?("주입(\(r)): \(text)")
+            // 3. Give Claude a moment to accept & start, then confirm it went
+            //    busy (best-effort: an instant reply may skip the busy window).
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            _ = await waitForState(.busy, live, sid: sid, stable: 1, pollSec: 1, timeoutSec: 8)
         }
-        // Drop injection bookkeeping for sessions no longer live.
-        let liveIDs = Set(sessions.filter { $0.live != nil }.map { $0.id })
-        queueLastInjection = queueLastInjection.filter { liveIDs.contains($0.key) }
+        runningQueues.remove(sid)
+        onStep?("완료 (남은 \(settings.queue(for: sid).count)개)")
+    }
+
+    /// Polls the terminal screen until it reaches `target` for `stable`
+    /// consecutive reads, or the session is disarmed / times out.
+    private func waitForState(_ target: TerminalActivator.ScreenState, _ live: LiveProcess,
+                              sid: String, stable: Int, pollSec: UInt64, timeoutSec: TimeInterval) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeoutSec)
+        var streak = 0
+        while runningQueues.contains(sid), Date() < deadline {
+            let state = await Task.detached { TerminalActivator.claudeScreenState(live) }.value
+            if state == target {
+                streak += 1
+                if streak >= stable { return true }
+            } else {
+                streak = 0
+            }
+            try? await Task.sleep(nanoseconds: pollSec * 1_000_000_000)
+        }
+        return false
     }
 
     // MARK: - Slash commands (/compact, /clear)

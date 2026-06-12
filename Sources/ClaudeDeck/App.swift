@@ -6,6 +6,7 @@ import UserNotifications
 @main
 enum Main {
     static func main() {
+        setbuf(stdout, nil)   // unbuffered stdout so --queue-run/--test-* logs stream live when redirected
         let args = CommandLine.arguments
         if args.contains("--probe") {
             Diagnostics.run()
@@ -67,8 +68,32 @@ enum Main {
             Diagnostics.testInject()
             return
         }
-        if args.contains("--test-orchestration") {
-            MainActor.assumeIsolated { Diagnostics.testOrchestration() }
+        // `--inject <tty> <text>` — one-shot injectText on a tty (verify type+submit).
+        if let i = args.firstIndex(of: "--inject"), i + 2 < args.count {
+            let proc = LiveProcess(id: 0, tty: args[i + 1], cwd: nil,
+                                   termProgram: "Apple_Terminal", termSessionId: nil)
+            let r = TerminalActivator.injectText(proc, text: args[i + 2])
+            print("inject \(args[i + 1]): \(r)")
+            return
+        }
+        // `--screen <tty>` — print screen-derived idle/busy state for a session.
+        if let i = args.firstIndex(of: "--screen"), i + 1 < args.count {
+            Diagnostics.screenProbe(tty: args[i + 1])
+            return
+        }
+        // `--queue-run <cwd> <count> <text>` — drive the real queue against a real session.
+        if let i = args.firstIndex(of: "--queue-run"), i + 3 < args.count {
+            let cwd = args[i + 1]
+            let count = Int(args[i + 2]) ?? 1
+            let text = args[i + 3]
+            // queueRun is @MainActor + async, so we must NOT block the main thread
+            // (a semaphore wait would deadlock the MainActor task). Spin the main
+            // run loop instead and exit when the task finishes.
+            Task { @MainActor in
+                await Diagnostics.queueRun(cwd: cwd, count: count, text: text)
+                exit(0)
+            }
+            RunLoop.main.run()
             return
         }
         // Debug: `--mcp global <name> <on|off>` or `--mcp project <name> <on|off> <path>`

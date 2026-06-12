@@ -193,107 +193,61 @@ enum Diagnostics {
         print("\n결과: \(passes) PASS / \(2 - passes) FAIL")
     }
 
-    /// Full end-to-end test of the idle-trigger orchestrator: binds a fake live
-    /// session to a throwaway Terminal, arms a 2-prompt queue, then drives
-    /// `AppState.processPromptQueues` across idle/busy/repeat cycles and asserts
-    /// prompts inject one-at-a-time, only when idle, advancing the queue.
-    /// Usage: `ClaudeDeck --test-orchestration`.
-    @MainActor
-    static func testOrchestration() {
-        print("== 예약 입력 큐 — 유휴 트리거 오케스트레이션 테스트 ==\n")
-        let f1 = "/tmp/claudedeck-orch-1.txt"
-        let f2 = "/tmp/claudedeck-orch-2.txt"
-        for f in [f1, f2] { try? FileManager.default.removeItem(atPath: f) }
-        let s1 = "ORCH_S1_\(Int(Date().timeIntervalSince1970))"
-        let s2 = "ORCH_S2_\(Int(Date().timeIntervalSince1970))"
-
-        var pass = 0, fail = 0
-        func check(_ label: String, _ cond: Bool) {
-            print("  [\(cond ? "PASS" : "FAIL")] \(label)")
-            cond ? (pass += 1) : (fail += 1)
-        }
-        func fileIs(_ path: String, _ want: String) -> Bool {
-            ((try? String(contentsOfFile: path, encoding: .utf8))?
-                .trimmingCharacters(in: .whitespacesAndNewlines) ?? "") == want
-        }
-
-        // 1) 일회용 Terminal 창 + tty.
-        let openScript = """
-        tell application "Terminal"
-          set t to do script "echo ORCH_READY"
-          delay 0.4
-          return tty of t
-        end tell
-        """
-        let tty = Shell.osascript(openScript).trimmingCharacters(in: .whitespacesAndNewlines)
-        guard tty.hasPrefix("/dev/tty") else {
-            print("  [FAIL] 일회용 Terminal tty 확보 실패: '\(tty)'"); return
-        }
-        let ttyName = String(tty.dropFirst("/dev/".count))
-        print("  일회용 창 tty=\(tty)\n")
-
-        let live = LiveProcess(id: 0, tty: ttyName, cwd: nil,
+    /// Prints the screen-derived idle/busy state for a tty (verifies the
+    /// detector against a real session). Usage: `ClaudeDeck --screen <tty>`.
+    static func screenProbe(tty: String) {
+        let proc = LiveProcess(id: 0, tty: tty, cwd: nil,
                                termProgram: "Apple_Terminal", termSessionId: nil)
-        let sid = "__diag_orch_\(Int(Date().timeIntervalSince1970))"
-        func session(status: SessionStatus, activityAt: Date) -> Session {
-            Session(id: sid, cwd: "/tmp", projectDirName: "tmp",
-                    lastActivity: activityAt, status: status, live: live)
-        }
+        let state = TerminalActivator.claudeScreenState(proc)
+        print("screen \(tty): \(state)")
+    }
 
-        // 2) 큐에 2개 예약 + arm.
+    /// Drives the REAL screen-driven queue against a REAL live Claude session:
+    /// finds the session at `cwd`, queues `count` copies of `text`, arms it, then
+    /// runs the production `AppState.runQueueLoop` — which injects one prompt at a
+    /// time, gated on the terminal's *visible* idle state — until the queue
+    /// drains. Usage: `ClaudeDeck --queue-run <cwd> <count> <text>`.
+    @MainActor
+    static func queueRun(cwd: String, count: Int, text: String) async {
+        print("== 예약 입력 큐 — 화면 기반 구동 (실제 세션) ==\n")
+        let scan0 = SessionScanner.scan()
+        guard let target = scan0.first(where: { $0.live != nil && $0.cwd == cwd }) else {
+            print("  [FAIL] cwd=\(cwd) 에서 라이브 세션을 찾지 못함.")
+            for s in scan0 where s.live != nil { print("    - \(s.cwd) (tty=\(s.live?.tty ?? "-"))") }
+            return
+        }
+        let sid = target.id
+        let tty = target.live?.tty ?? "-"
+        print("  대상 세션: \(target.folderName) | cwd=\(cwd) | tty=\(tty)")
+
         let settings = AppSettings.shared
         settings.clearQueue(sid)
-        settings.addPrompt("echo \(s1) > \(f1)", to: sid)
-        settings.addPrompt("echo \(s2) > \(f2)", to: sid)
+        for n in 1...max(1, count) { settings.addPrompt("[\(n)] " + text, to: sid) }
+        print("  예약 \(count)개 (각 [n] 접두사로 구분)\n")
+
         let state = AppState()
-        state.startQueue(sid)
-        check("arm 후 runningQueues에 포함", state.isQueueRunning(sid))
-        check("초기 큐 2개", settings.queue(for: sid).count == 2)
-
-        // 3) Pass A — 유휴(waiting) → 1번 프롬프트 주입되어야.
+        state.sessions = scan0          // so runQueueLoop can resolve the live process
         let t0 = Date()
-        state.processPromptQueues([session(status: .waiting, activityAt: t0)])
-        check("유휴 1회차: 큐 1개로 감소(dequeue)", settings.queue(for: sid).count == 1)
-        Thread.sleep(forTimeInterval: 1.0)
-        check("유휴 1회차: 1번 프롬프트가 탭에서 실행됨", fileIs(f1, s1))
-        check("유휴 1회차: 2번은 아직 미실행", !FileManager.default.fileExists(atPath: f2))
+        state.startQueue(sid)           // spawns the loop on its own
+        print("  [  0.0s] arm — 화면 유휴 감지 시 하나씩 주입\n")
 
-        // 4) Pass B — 같은 유휴 구간(활동시각 불변) → 중복 발사 금지.
-        state.processPromptQueues([session(status: .waiting, activityAt: t0)])
-        Thread.sleep(forTimeInterval: 0.6)
-        check("같은 유휴구간: 큐 그대로 1개(중복 미발사)", settings.queue(for: sid).count == 1)
-        check("같은 유휴구간: 2번 여전히 미실행", !FileManager.default.fileExists(atPath: f2))
-
-        // 5) Pass C — 1번이 작업을 유발해 busy 상태 → 주입 안 함.
-        state.processPromptQueues([session(status: .busy, activityAt: Date())])
-        Thread.sleep(forTimeInterval: 0.4)
-        check("busy 상태: 주입 안 함(큐 1개 유지)", settings.queue(for: sid).count == 1)
-
-        // 6) Pass D — 작업 끝나 다시 유휴 + 새 활동 관측 → 2번 주입.
-        state.processPromptQueues([session(status: .waiting, activityAt: Date())])
-        check("유휴 2회차: 큐 0개로 감소", settings.queue(for: sid).isEmpty)
-        Thread.sleep(forTimeInterval: 1.0)
-        check("유휴 2회차: 2번 프롬프트가 탭에서 실행됨", fileIs(f2, s2))
-        check("큐 소진 후 자동 disarm", !state.isQueueRunning(sid))
-
-        // 7) 정리.
-        let closeScript = """
-        tell application "Terminal"
-          repeat with w in windows
-            repeat with t in tabs of w
-              if tty of t is "\(tty)" then
-                close w
-                return "closed"
-              end if
-            end repeat
-          end repeat
-        end tell
-        """
-        _ = Shell.osascript(closeScript)
+        // Mirror the loop with our own logging by polling its observable state.
+        var lastRemaining = settings.queue(for: sid).count
+        let deadline = t0.addingTimeInterval(420)
+        while state.isQueueRunning(sid), Date() < deadline {
+            let rem = settings.queue(for: sid).count
+            if rem != lastRemaining {
+                let el = String(format: "%5.1fs", Date().timeIntervalSince(t0))
+                print("  [\(el)] ▶︎ 주입됨 — 큐 \(lastRemaining)→\(rem)")
+                lastRemaining = rem
+            }
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+        }
+        let remaining = settings.queue(for: sid).count
+        print("\n  종료: 남은 큐 \(remaining)개, arm=\(state.isQueueRunning(sid))")
+        print(remaining == 0 ? "  ✅ 전부 주입 완료 (화면 유휴 감지 기반)."
+                             : "  ⚠️ \(remaining)개 미주입 (타임아웃).")
         settings.clearQueue(sid)
-        for f in [f1, f2] { try? FileManager.default.removeItem(atPath: f) }
-
-        print("\n결과: \(pass) PASS / \(fail) FAIL")
     }
 
     /// Renders the popover (at the given tab) to a PNG so the layout can be

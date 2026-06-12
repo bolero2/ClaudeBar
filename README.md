@@ -26,7 +26,7 @@ English &nbsp;·&nbsp; [한국어](README-kr.md)
 
 ---
 
-When you run several Claude Code sessions across different terminals, ClaudeDeck shows — right from the menu bar — **which session is working, where it's running, and how full its context window is**. One click jumps to the owning terminal or resumes an ended session. It's 100% native Swift, has zero dependencies, and is **read-only**: it only looks at files under `~/.claude`.
+When you run several Claude Code sessions across different terminals, ClaudeDeck shows — right from the menu bar — **which session is working, where it's running, and how full its context window is**. One click jumps to the owning terminal or resumes an ended session. It's 100% native Swift and has zero dependencies. It's **read-only** by default (it only looks at files under `~/.claude`); the session-control features are the one exception — they **send input to the terminal sessions you choose** (slash commands · scheduled prompts).
 
 ## ✨ Features
 
@@ -41,6 +41,7 @@ When you run several Claude Code sessions across different terminals, ClaudeDeck
 - 🔔 **Notifications** — get notified when a session **finishes and is waiting for input**, or when a session's context (80%) or your usage limit (90%) is about to run out. Click a notification to jump straight to that session.
 - ⌨️ **Global hotkey** — `⌥⌘C` opens the panel from anywhere.
 - ⌨️ **Quick actions** — start a **new session** in a chosen directory (optionally with `--dangerously-skip-permissions`), **kill** a running session, or right-click for "reveal in Finder / copy path".
+- 🎮 **Session control (input injection)** — type straight into a running session's terminal: send `/compact` · `/clear` slash commands, plus a **scheduled prompt queue** — line up several prompts and ClaudeDeck **auto-injects them one at a time, watching the terminal screen to fire only when Claude goes idle**, so long unattended runs keep moving. Without stealing focus.
 - 📈 **Usage**
   - **Official rate limits** — the same data as Claude Code's `/usage`: 5-hour session, 7-day week (and Sonnet-only) **% used + time until reset**.
   - **Cost** — estimated today / 7-day / 30-day spend (token counts × API rates).
@@ -164,6 +165,7 @@ Sources/ClaudeDeck/
 - [x] Localization (English / 한국어), permission-mode badges
 - [x] Global hotkey (⌥⌘C), click-to-jump notifications
 - [x] OAuth token auto-refresh, configurable thresholds
+- [x] Session control — `/compact`·`/clear` + scheduled prompt queue (screen-driven auto-inject)
 - [ ] macOS widget (needs an Xcode project + Developer signing for App Groups)
 - [ ] Multi-account switching
 

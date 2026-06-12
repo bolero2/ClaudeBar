@@ -126,12 +126,18 @@ enum TerminalActivator {
 
     private static func appleTerminalInjectScript(_ devTTY: String, _ line: String) -> String {
         // No `activate` / window reordering → the tab stays in the background.
+        // The first `do script` only TYPES the text into the (TUI) input box —
+        // its trailing return is swallowed by the line editor, not treated as
+        // submit. A second, separate `do script ""` sends a bare return that
+        // actually submits it. Verified against a live `claude` TUI.
         """
         tell application "Terminal"
           repeat with w in windows
             repeat with t in tabs of w
               if tty of t is "\(devTTY)" then
                 do script "\(escapeAS(line))" in t
+                delay 0.2
+                do script "" in t
                 return "ok"
               end if
             end repeat
@@ -142,13 +148,17 @@ enum TerminalActivator {
     }
 
     private static func iTermInjectScript(_ devTTY: String, _ line: String) -> String {
+        // Same two-step as Apple Terminal: type the text, then a separate
+        // newline to submit it past the TUI's line editor.
         """
         tell application "iTerm2"
           repeat with w in windows
             repeat with t in tabs of w
               repeat with s in sessions of t
                 if tty of s is "\(devTTY)" then
-                  tell s to write text "\(escapeAS(line))"
+                  tell s to write text "\(escapeAS(line))" newline no
+                  delay 0.2
+                  tell s to write text ""
                   return "ok"
                 end if
               end repeat
@@ -156,6 +166,76 @@ enum TerminalActivator {
           end repeat
         end tell
         return "notfound"
+        """
+    }
+
+    // MARK: - Screen-content idle detection
+
+    /// Whether Claude's TUI in a tab is mid-turn (`busy`) or awaiting input
+    /// (`idle`). Derived from the *visible terminal contents* — robust to
+    /// Claude Code buffering its JSONL transcript (which makes file-mtime based
+    /// detection unreliable for live sessions).
+    enum ScreenState { case idle, busy, unknown }
+
+    /// Reads the visible contents of the tab/session bound to `proc.tty`
+    /// WITHOUT changing focus, and classifies Claude's state.
+    static func claudeScreenState(_ proc: LiveProcess) -> ScreenState {
+        guard let tty = proc.tty else { return .unknown }
+        let devTTY = "/dev/" + tty
+        let program = proc.termProgram ?? ""
+        let raw = program.lowercased().contains("iterm")
+            ? Shell.osascript(iTermReadScript(devTTY))
+            : Shell.osascript(appleTerminalReadScript(devTTY))
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.isEmpty || text == "READ_FAIL" { return .unknown }
+        return screenIsBusy(text) ? .busy : .idle
+    }
+
+    /// Busy markers seen in Claude Code's live spinner line: the interrupt hint
+    /// or the streaming token widget `… (12s · ↓ 3.4k tokens)`. The idle status
+    /// bar only ever shows `· ←` (a left arrow), so up/down arrows are a clean
+    /// busy signal.
+    static func screenIsBusy(_ text: String) -> Bool {
+        text.contains("esc to interrupt") || text.contains("· ↓") || text.contains("· ↑")
+    }
+
+    /// `contents of <loopVar>` returns a tab *reference*, not text, so the tab
+    /// must be addressed explicitly as `tab j of window i`. Window order is
+    /// unstable (front-most first), so we match by tty inside one atomic script,
+    /// guarding each window with `try` (some windows raise on `tabs`).
+    private static func appleTerminalReadScript(_ devTTY: String) -> String {
+        """
+        tell application "Terminal"
+          set wc to count of windows
+          repeat with i from 1 to wc
+            try
+              set tc to count of tabs of window i
+              repeat with j from 1 to tc
+                if (tty of tab j of window i) is "\(devTTY)" then
+                  return (contents of tab j of window i)
+                end if
+              end repeat
+            end try
+          end repeat
+        end tell
+        return "READ_FAIL"
+        """
+    }
+
+    private static func iTermReadScript(_ devTTY: String) -> String {
+        """
+        tell application "iTerm2"
+          repeat with w in windows
+            repeat with t in tabs of w
+              repeat with s in sessions of t
+                if (tty of s) is "\(devTTY)" then
+                  return (contents of s)
+                end if
+              end repeat
+            end repeat
+          end repeat
+        end tell
+        return "READ_FAIL"
         """
     }
 
