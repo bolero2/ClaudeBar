@@ -156,10 +156,8 @@ private struct SessionRow: View {
                         Text(session.folderName)
                             .font(.system(size: 12, weight: .medium))
                             .lineLimit(1)
-                            .fixedSize()                 // keep the name intact
-                        // Branch fills the row and truncates with … only when it
-                        // actually overflows; if there's no branch, a Spacer holds
-                        // the place. Either way the mode badge sits at the right.
+                            .layoutPriority(1)           // keep the name; truncate branch first
+                        // Branch on a single line; truncate with … only if too long.
                         if let branch = session.gitBranch, branch != "HEAD" {
                             Label(branch, systemImage: "arrow.triangle.branch")
                                 .font(.system(size: 10))
@@ -167,19 +165,6 @@ private struct SessionRow: View {
                                 .labelStyle(.titleAndIcon)
                                 .lineLimit(1)
                                 .truncationMode(.tail)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        } else {
-                            Spacer(minLength: 4)
-                        }
-                        if let mode = modeBadge {
-                            Text(mode.text)
-                                .font(.system(size: 8, weight: .bold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1)
-                                .background(mode.color)
-                                .clipShape(Capsule())
-                                .fixedSize()
                         }
                     }
                     Text(session.cwd)
@@ -201,16 +186,30 @@ private struct SessionRow: View {
                         .foregroundStyle(session.status == .busy ? Color.green : Color.secondary)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
 
+                Spacer(minLength: 6)
+
+                // Model / time, with the permission-mode badge pinned at the far right.
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(Format.model(session.model))
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 4) {
+                        if let mode = modeBadge {
+                            Text(mode.text)
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(mode.color)
+                                .clipShape(Capsule())
+                        }
+                        Text(Format.model(session.model))
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
                     Text(Format.ago(session.lastActivity))
                         .font(.system(size: 9))
                         .foregroundStyle(.tertiary)
                 }
+                .fixedSize()
             }
 
             if let fraction = session.contextFraction, let tokens = session.contextTokens {
