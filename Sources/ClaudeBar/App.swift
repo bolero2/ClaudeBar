@@ -9,6 +9,20 @@ enum Main {
             Diagnostics.run()
             return
         }
+        // Debug: `--mcp global <name> <on|off>` or `--mcp project <name> <on|off> <path>`
+        if let i = args.firstIndex(of: "--mcp"), i + 3 < args.count {
+            let scope = args[i + 1], name = args[i + 2], enable = args[i + 3] == "on"
+            let r: MCPService.Result
+            if scope == "global" {
+                r = MCPService.setGlobalEnabled(name, enabled: enable)
+            } else if i + 4 < args.count {
+                r = MCPService.setProjectEnabled(projectPath: args[i + 4], name: name, enabled: enable)
+            } else {
+                r = .failed("project 경로 필요")
+            }
+            print("mcp \(scope) \(name) -> \(enable ? "on" : "off"): \(r)")
+            return
+        }
         if let i = args.firstIndex(of: "--render"), i + 2 < args.count {
             let what = args[i + 1]
             let path = args[i + 2]
