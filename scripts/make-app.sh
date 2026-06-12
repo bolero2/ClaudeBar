@@ -26,6 +26,11 @@ mkdir -p "${MACOS}" "${RESOURCES}"
 cp "${BIN}" "${MACOS}/${APP_NAME}"
 chmod +x "${MACOS}/${APP_NAME}"
 
+# App icon (Dock icon when the dashboard is open + notification icon).
+if [ -f "Resources/AppIcon.icns" ]; then
+    cp "Resources/AppIcon.icns" "${RESOURCES}/AppIcon.icns"
+fi
+
 cat > "${CONTENTS}/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -35,6 +40,8 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
     <key>CFBundleDisplayName</key>           <string>${DISPLAY_NAME}</string>
     <key>CFBundleIdentifier</key>            <string>${BUNDLE_ID}</string>
     <key>CFBundleExecutable</key>            <string>${APP_NAME}</string>
+    <key>CFBundleIconFile</key>              <string>AppIcon</string>
+    <key>CFBundleIconName</key>              <string>AppIcon</string>
     <key>CFBundlePackageType</key>           <string>APPL</string>
     <key>CFBundleVersion</key>               <string>${BUILD}</string>
     <key>CFBundleShortVersionString</key>    <string>${VERSION}</string>
