@@ -16,7 +16,7 @@ enum OfficialUsageService {
     private static let keychainService = "Claude Code-credentials"
 
     static func fetch() async -> RateLimitUsage? {
-        guard let token = accessToken() else { return nil }
+        guard let token = await TokenManager.shared.validAccessToken() else { return nil }
 
         var req = URLRequest(url: endpoint)
         req.httpMethod = "GET"
@@ -32,21 +32,6 @@ enum OfficialUsageService {
         else { return nil }
 
         return parse(obj)
-    }
-
-    // MARK: - Keychain
-
-    /// Reads the OAuth access token from `~/.claude` credentials via `security`.
-    /// First access from this app may prompt the user to allow Keychain access.
-    private static func accessToken() -> String? {
-        let out = Shell.run("/usr/bin/security",
-                            ["find-generic-password", "-s", keychainService, "-w"])
-        guard let data = out.data(using: .utf8),
-              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let oauth = obj["claudeAiOauth"] as? [String: Any],
-              let token = oauth["accessToken"] as? String, !token.isEmpty
-        else { return nil }
-        return token
     }
 
     // MARK: - Parsing
