@@ -23,25 +23,28 @@ enum Format {
         usd <= 0 ? "—" : String(format: "$%.2f", usd)
     }
 
-    private static let relative: RelativeDateTimeFormatter = {
-        let f = RelativeDateTimeFormatter()
-        f.locale = Locale(identifier: "ko_KR")
-        f.unitsStyle = .short
-        return f
-    }()
+    private static let relative = RelativeDateTimeFormatter()
 
     static func ago(_ date: Date) -> String {
-        relative.localizedString(for: date, relativeTo: Date())
+        relative.unitsStyle = .short
+        relative.locale = Locale(identifier: isEnglish ? "en_US" : "ko_KR")
+        return relative.localizedString(for: date, relativeTo: Date())
     }
 
-    /// Compact "time until reset": "45분 후", "7시간 12분 후", "2일 후".
+    /// Compact "time until reset".
     static func resetIn(_ date: Date?) -> String {
         guard let date else { return "—" }
         let secs = Int(date.timeIntervalSinceNow)
-        if secs <= 0 { return "곧 리셋" }
         let days = secs / 86_400
         let hours = (secs % 86_400) / 3600
         let mins = (secs % 3600) / 60
+        if isEnglish {
+            if secs <= 0 { return "resetting" }
+            if days >= 1 { return hours > 0 ? "in \(days)d \(hours)h" : "in \(days)d" }
+            if hours >= 1 { return mins > 0 ? "in \(hours)h \(mins)m" : "in \(hours)h" }
+            return "in \(mins)m"
+        }
+        if secs <= 0 { return "곧 리셋" }
         if days >= 1 { return hours > 0 ? "\(days)일 \(hours)시간 후" : "\(days)일 후" }
         if hours >= 1 { return mins > 0 ? "\(hours)시간 \(mins)분 후" : "\(hours)시간 후" }
         return "\(mins)분 후"

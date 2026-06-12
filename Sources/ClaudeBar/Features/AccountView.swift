@@ -13,10 +13,10 @@ struct AccountView: View {
                 if let account = state.account {
                     AccountCard(account: account)
                 } else {
-                    EmptyHint(text: "연동된 계정이 없습니다.")
+                    EmptyHint(text: L("연동된 계정이 없습니다."))
                 }
 
-                Text("멀티 계정 전환은 다음 버전에서 지원됩니다.")
+                Text(L("멀티 계정 전환은 다음 버전에서 지원됩니다."))
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
                     .padding(.horizontal, 8)
@@ -38,7 +38,7 @@ private struct AccountCard: View {
                         Text(account.displayName ?? account.email)
                             .font(.system(size: 13, weight: .semibold))
                         if account.isActive {
-                            Text("활성")
+                            Text(L("활성"))
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 5)
@@ -56,9 +56,9 @@ private struct AccountCard: View {
 
             Divider()
 
-            infoRow("조직", account.organizationName)
-            infoRow("역할", account.organizationRole)
-            infoRow("결제", account.billingType)
+            infoRow(L("조직"), account.organizationName)
+            infoRow(L("역할"), account.organizationRole)
+            infoRow(L("결제"), account.billingType)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)

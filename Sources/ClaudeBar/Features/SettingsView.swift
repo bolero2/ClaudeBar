@@ -6,26 +6,39 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                section("알림") {
-                    toggle("입력 대기 알림", $settings.notifyWaiting)
-                    toggle("컨텍스트 임박 알림", $settings.notifyContext)
-                    toggle("사용 한도 임박 알림", $settings.notifyRateLimit)
+                section(L("언어")) {
+                    HStack {
+                        Text(L("언어")).font(.system(size: 12))
+                        Spacer()
+                        Picker("", selection: $settings.language) {
+                            Text("English").tag("en")
+                            Text("한국어").tag("ko")
+                        }
+                        .labelsHidden()
+                        .frame(width: 110)
+                    }
                 }
 
-                section("임계치") {
-                    slider("컨텍스트 경고", value: $settings.contextWarnPercent,
+                section(L("알림")) {
+                    toggle(L("입력 대기 알림"), $settings.notifyWaiting)
+                    toggle(L("컨텍스트 임박 알림"), $settings.notifyContext)
+                    toggle(L("사용 한도 임박 알림"), $settings.notifyRateLimit)
+                }
+
+                section(L("임계치")) {
+                    slider(L("컨텍스트 경고"), value: $settings.contextWarnPercent,
                            range: 50...95, unit: "%")
-                    slider("사용 한도 경고", value: $settings.rateWarnPercent,
+                    slider(L("사용 한도 경고"), value: $settings.rateWarnPercent,
                            range: 50...99, unit: "%")
                 }
 
-                section("터미널") {
+                section(L("터미널")) {
                     HStack {
-                        Text("새 세션 / 복구에 사용")
+                        Text(L("새 세션 / 복구에 사용"))
                             .font(.system(size: 12))
                         Spacer()
                         Picker("", selection: $settings.preferredTerminal) {
-                            Text("자동").tag("auto")
+                            Text(L("자동")).tag("auto")
                             Text("Terminal").tag("Terminal")
                             Text("iTerm").tag("iTerm")
                         }
@@ -34,8 +47,8 @@ struct SettingsView: View {
                     }
                 }
 
-                section("시스템") {
-                    Toggle("로그인 시 자동 실행", isOn: Binding(
+                section(L("시스템")) {
+                    Toggle(L("로그인 시 자동 실행"), isOn: Binding(
                         get: { settings.launchAtLogin },
                         set: { settings.setLaunchAtLogin($0) }
                     ))

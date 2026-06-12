@@ -16,6 +16,7 @@ final class AppSettings: ObservableObject {
         static let rateWarnPercent = "rateWarnPercent"
         static let preferredTerminal = "preferredTerminal"   // "auto" | "Terminal" | "iTerm"
         static let pinnedProjects = "pinnedProjects"
+        static let language = "language"                      // "en" | "ko"
     }
 
     private let d = UserDefaults.standard
@@ -27,6 +28,7 @@ final class AppSettings: ObservableObject {
     @Published var rateWarnPercent: Double { didSet { d.set(rateWarnPercent, forKey: Key.rateWarnPercent) } }
     @Published var preferredTerminal: String { didSet { d.set(preferredTerminal, forKey: Key.preferredTerminal) } }
     @Published var pinnedProjects: [String] { didSet { d.set(pinnedProjects, forKey: Key.pinnedProjects) } }
+    @Published var language: String { didSet { d.set(language, forKey: Key.language) } }
 
     func isPinned(_ projectDirName: String) -> Bool {
         pinnedProjects.contains(projectDirName)
@@ -48,6 +50,7 @@ final class AppSettings: ObservableObject {
         rateWarnPercent = (d.object(forKey: Key.rateWarnPercent) as? Double) ?? 90
         preferredTerminal = (d.string(forKey: Key.preferredTerminal)) ?? "auto"
         pinnedProjects = (d.array(forKey: Key.pinnedProjects) as? [String]) ?? []
+        language = (d.string(forKey: Key.language)) ?? Loc.systemDefault
     }
 
     // MARK: - Launch at login (SMAppService, computed — not stored here)

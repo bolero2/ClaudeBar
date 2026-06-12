@@ -41,7 +41,7 @@ struct UsageView: View {
                     let projects = usage.projectCost7d
                         .sorted { $0.value > $1.value }.prefix(8)
                     if !projects.isEmpty {
-                        SectionHeader(title: "프로젝트별 (7일)", count: nil)
+                        SectionHeader(title: L("프로젝트별 (7일)"), count: nil)
                         ForEach(Array(projects), id: \.key) { dir, cost in
                             ProjectUsageRow(
                                 name: projectName(dir),
@@ -52,15 +52,15 @@ struct UsageView: View {
                     }
 
                     if !usage.lifetimeByModel.isEmpty {
-                        SectionHeader(title: "모델별 누적", count: nil)
+                        SectionHeader(title: L("모델별 누적"), count: nil)
                         ForEach(usage.lifetimeByModel.sorted { $0.value.outputTokens > $1.value.outputTokens }, id: \.key) { model, sum in
                             ModelUsageRow(model: model, sum: sum)
                         }
                     }
 
                     Text(state.rateLimit == nil
-                         ? "공식 사용 한도를 가져오지 못했습니다 · 아래는 로컬 집계"
-                         : "위는 공식 한도 · 아래 토큰/비용은 로컬 트랜스크립트 기반(비용은 API 단가 환산 추정)")
+                         ? L("공식 사용 한도를 가져오지 못했습니다 · 아래는 로컬 집계")
+                         : L("위는 공식 한도 · 아래 토큰/비용은 로컬 트랜스크립트 기반(비용은 API 단가 환산 추정)"))
                         .font(.system(size: 10))
                         .foregroundStyle(.tertiary)
                         .padding(.horizontal, 8)
@@ -69,7 +69,7 @@ struct UsageView: View {
                     VStack(spacing: 8) {
                         ProgressView()
                             .controlSize(.small)
-                        Text("사용량을 집계하는 중…")
+                        Text(L("사용량을 집계하는 중…"))
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                     }
@@ -92,7 +92,7 @@ private struct RateLimitCard: View {
                 Image(systemName: "gauge.with.dots.needle.50percent")
                     .font(.system(size: 11))
                     .foregroundStyle(.tint)
-                Text("사용 한도")
+                Text(L("사용 한도"))
                     .font(.system(size: 12, weight: .semibold))
             }
             ForEach(rate.windows) { window in
@@ -121,10 +121,10 @@ private struct RateRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack {
-                Text(window.title)
+                Text(L(window.title))
                     .font(.system(size: 11, weight: .medium))
                 Spacer()
-                Text("\(Int(window.utilization))% 사용")
+                Text("\(Int(window.utilization))% \(L("사용"))")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(color)
                     .monospacedDigit()
@@ -137,7 +137,7 @@ private struct RateRow: View {
             }
             .frame(height: 5)
             HStack {
-                Text("\(Int(window.remaining))% 남음")
+                Text("\(Int(window.remaining))% \(L("남음"))")
                     .font(.system(size: 9))
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -158,11 +158,11 @@ private struct DailyChartCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top) {
-                stat("오늘", Format.cost(usage.todayCost),
-                     "\(Format.tokens(usage.todayTokens)) 토큰")
+                stat(L("오늘"), Format.cost(usage.todayCost),
+                     "\(Format.tokens(usage.todayTokens)) \(L("토큰"))")
                 Spacer()
-                stat("\(UsageService.historyDays)일", Format.cost(usage.historyCost),
-                     "\(Format.tokens(usage.totalTokensHistory)) 토큰", align: .trailing)
+                stat("\(UsageService.historyDays)\(isEnglish ? "d" : "일")", Format.cost(usage.historyCost),
+                     "\(Format.tokens(usage.totalTokensHistory)) \(L("토큰"))", align: .trailing)
             }
 
             Chart(usage.daily) { day in
@@ -179,7 +179,7 @@ private struct DailyChartCard: View {
             .frame(height: 80)
 
             if let top = usage.topModel {
-                Text("Top 모델: \(Format.model(top))")
+                Text("\(L("Top 모델")): \(Format.model(top))")
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
             }
@@ -207,7 +207,7 @@ private struct UsageCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(window.title)
+                Text(L(window.title))
                     .font(.system(size: 12, weight: .semibold))
                 Spacer()
                 if window.costUSD > 0 {
@@ -220,10 +220,10 @@ private struct UsageCard: View {
                     .foregroundStyle(Color.claudeCoral)
             }
             HStack(spacing: 12) {
-                stat("입력", window.inputTokens)
-                stat("출력", window.outputTokens)
-                stat("캐시읽기", window.cacheReadTokens)
-                stat("캐시생성", window.cacheCreationTokens)
+                stat(L("입력"), window.inputTokens)
+                stat(L("출력"), window.outputTokens)
+                stat(L("캐시읽기"), window.cacheReadTokens)
+                stat(L("캐시생성"), window.cacheCreationTokens)
             }
         }
         .padding(10)
@@ -281,7 +281,7 @@ private struct ModelUsageRow: View {
             Text(Format.model(model))
                 .font(.system(size: 11, weight: .medium))
             Spacer()
-            Text("출력 \(Format.tokens(sum.outputTokens))")
+            Text("\(L("출력")) \(Format.tokens(sum.outputTokens))")
                 .font(.system(size: 10))
                 .foregroundStyle(.secondary)
             Text(Format.cost(sum.costUSD))

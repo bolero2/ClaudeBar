@@ -24,7 +24,8 @@ enum MockData {
 
     private static func session(_ folder: String, branch: String?, model: String,
                                 ctx: Int, limit: Int, status: SessionStatus,
-                                live: Bool, agoSec: Double, activity: String? = nil) -> Session {
+                                live: Bool, agoSec: Double, activity: String? = nil,
+                                mode: String? = nil) -> Session {
         let cwd = "/Users/dev/work/\(folder)"
         return Session(
             id: "mock-\(folder)",
@@ -36,6 +37,7 @@ enum MockData {
             status: status,
             live: live ? liveProc("ttys00\(abs(folder.hashValue) % 8)") : nil,
             activity: activity,
+            permissionMode: mode,
             contextTokens: ctx,
             contextLimit: limit
         )
@@ -45,12 +47,15 @@ enum MockData {
         [
             session("web-dashboard", branch: "feature/charts", model: "claude-opus-4-8",
                     ctx: 612_000, limit: 1_000_000, status: .busy, live: true, agoSec: 3,
-                    activity: "Bash: npm test"),
+                    activity: "Bash: npm test", mode: "bypassPermissions"),
             session("api-gateway", branch: "main", model: "claude-sonnet-4-6",
                     ctx: 88_000, limit: 200_000, status: .waiting, live: true, agoSec: 240,
-                    activity: "리팩터링을 마쳤습니다. 다음 단계를 진행할까요?"),
+                    activity: isEnglish ? "Refactor done. Shall I move on to the next step?"
+                                        : "리팩터링을 마쳤습니다. 다음 단계를 진행할까요?",
+                    mode: "plan"),
             session("ml-pipeline", branch: "main", model: "claude-opus-4-8",
-                    ctx: 145_000, limit: 1_000_000, status: .inactive, live: false, agoSec: 5400),
+                    ctx: 145_000, limit: 1_000_000, status: .inactive, live: false, agoSec: 5400,
+                    activity: nil, mode: "acceptEdits"),
             session("mobile-app", branch: "release/2.0", model: "claude-opus-4-8",
                     ctx: 880_000, limit: 1_000_000, status: .inactive, live: false, agoSec: 9000),
             session("docs-site", branch: "main", model: "claude-haiku-4-5-20251001",

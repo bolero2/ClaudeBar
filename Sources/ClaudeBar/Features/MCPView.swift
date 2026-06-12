@@ -10,9 +10,9 @@ struct MCPView: View {
 
     private var content: some View {
             VStack(alignment: .leading, spacing: 4) {
-                SectionHeader(title: "전역 MCP", count: state.globalMCP.count)
+                SectionHeader(title: L("전역 MCP"), count: state.globalMCP.count)
                 if state.globalMCP.isEmpty {
-                    EmptyHint(text: "전역 MCP 서버가 없습니다.")
+                    EmptyHint(text: L("전역 MCP 서버가 없습니다."))
                 } else {
                     ForEach(state.globalMCP) { server in
                         MCPRow(server: server)
@@ -21,7 +21,7 @@ struct MCPView: View {
 
                 let grouped = Dictionary(grouping: state.projectMCP) { $0.projectPath ?? "" }
                 if !grouped.isEmpty {
-                    SectionHeader(title: "프로젝트별 MCP", count: grouped.count)
+                    SectionHeader(title: L("프로젝트별 MCP"), count: grouped.count)
                     ForEach(grouped.keys.sorted(), id: \.self) { path in
                         Text((path as NSString).lastPathComponent)
                             .font(.system(size: 10, weight: .semibold))
@@ -34,7 +34,7 @@ struct MCPView: View {
                     }
                 }
 
-                Text("토글은 새로 시작하는 세션부터 적용됩니다. (실행 중 세션은 영향 없음)")
+                Text(L("토글은 새로 시작하는 세션부터 적용됩니다. (실행 중 세션은 영향 없음)"))
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
                     .padding(.horizontal, 8)
@@ -94,9 +94,9 @@ private struct MCPRow: View {
                     MiniSwitch(isOn: server.enabled)
                 }
                 .buttonStyle(.plain)
-                .help(server.enabled ? "클릭: 끄기" : "클릭: 켜기")
+                .help(server.enabled ? L("클릭: 끄기") : L("클릭: 켜기"))
             } else {
-                Text("항상 켜짐")
+                Text(L("항상 켜짐"))
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
             }

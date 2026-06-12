@@ -41,6 +41,9 @@ struct Session: Identifiable {
     /// for live sessions. nil when unknown.
     var activity: String?
 
+    /// Latest permission mode: "default" | "plan" | "acceptEdits" | "bypassPermissions".
+    var permissionMode: String?
+
     /// Current context size = the latest assistant turn's prompt + output
     /// (input + cache_read + cache_creation + output). nil if unknown.
     var contextTokens: Int?

@@ -44,10 +44,12 @@ enum TerminalActivator {
         open("cd '\(escapeShell(cwd))' && claude --resume \(sessionId)")
     }
 
-    /// Opens a new terminal window and starts a fresh `claude` session in `cwd`.
+    /// Opens a new terminal window and starts a fresh `claude` session in `cwd`,
+    /// optionally with `--dangerously-skip-permissions`.
     @discardableResult
-    static func openNew(cwd: String) -> Result {
-        open("cd '\(escapeShell(cwd))' && claude")
+    static func openNew(cwd: String, skipPermissions: Bool = false) -> Result {
+        let flag = skipPermissions ? " --dangerously-skip-permissions" : ""
+        return open("cd '\(escapeShell(cwd))' && claude\(flag)")
     }
 
     private static func escapeShell(_ s: String) -> String {

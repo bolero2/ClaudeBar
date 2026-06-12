@@ -165,8 +165,8 @@ final class AppState: ObservableObject {
                           waitNotified[id] != true {
                     if settings.notifyWaiting {
                         NotificationService.post(
-                            title: "입력 대기 중",
-                            body: "\(s.folderName) 세션이 입력을 기다립니다.")
+                            title: L("입력 대기 중"),
+                            body: "\(s.folderName) \(L("세션이 입력을 기다립니다."))")
                     }
                     waitNotified[id] = true
                 }
@@ -183,8 +183,8 @@ final class AppState: ObservableObject {
                 } else if contextNotified[id] != true {
                     if settings.notifyContext {
                         NotificationService.post(
-                            title: "컨텍스트 한도 임박",
-                            body: "\(s.folderName) 컨텍스트 \(Int(frac * 100))% · \(SessionContext.windowLabel(s.contextLimit))")
+                            title: L("컨텍스트 한도 임박"),
+                            body: "\(s.folderName) \(L("컨텍스트")) \(Int(frac * 100))% · \(SessionContext.windowLabel(s.contextLimit))")
                     }
                     contextNotified[id] = true
                 }
@@ -210,8 +210,8 @@ final class AppState: ObservableObject {
                 } else if rateNotified[w.id] != true {
                     if settings.notifyRateLimit {
                         NotificationService.post(
-                            title: "사용 한도 임박",
-                            body: "\(w.title) \(Int(w.utilization))% 사용 · 리셋 \(Format.resetIn(w.resetsAt))")
+                            title: L("사용 한도 임박"),
+                            body: "\(L(w.title)) \(Int(w.utilization))% \(L("사용")) · \(L("리셋")) \(Format.resetIn(w.resetsAt))")
                     }
                     rateNotified[w.id] = true
                 }
@@ -258,23 +258,23 @@ final class AppState: ObservableObject {
     }
 
     /// Opens a new terminal window and starts `claude` in the given directory.
-    func newSession(cwd: String) {
+    func newSession(cwd: String, skipPermissions: Bool = false) {
         Task.detached(priority: .userInitiated) {
-            _ = TerminalActivator.openNew(cwd: cwd)
+            _ = TerminalActivator.openNew(cwd: cwd, skipPermissions: skipPermissions)
         }
     }
 
     /// Prompts for a directory, then starts a new session there.
-    func newSessionInteractive() {
+    func newSessionInteractive(skipPermissions: Bool = false) {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
-        panel.prompt = "새 세션 시작"
-        panel.message = "Claude Code를 시작할 디렉토리를 선택하세요"
+        panel.prompt = L("새 세션 시작")
+        panel.message = L("Claude Code를 시작할 디렉토리를 선택하세요")
         NSApp.activate(ignoringOtherApps: true)
         if panel.runModal() == .OK, let url = panel.url {
-            newSession(cwd: url.path)
+            newSession(cwd: url.path, skipPermissions: skipPermissions)
         }
     }
 

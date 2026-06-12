@@ -68,6 +68,7 @@ enum SessionScanner {
                 ?? ClaudePaths.decodeProjectDirName(dirName)
             sessions[i].contextTokens = detail.contextCurrent
             sessions[i].activity = detail.activity
+            sessions[i].permissionMode = detail.permissionMode
             let baseModel = detail.model.map(Self.stripModelSuffix)
             let configExtended = config?.projectUsesExtendedContext(
                 path: sessions[i].cwd, baseModel: baseModel) ?? false
@@ -107,7 +108,7 @@ enum SessionScanner {
 
     private static func parseTail(_ url: URL, projectDirName: String)
         -> (model: String?, gitBranch: String?, matchedCwd: String?,
-            contextCurrent: Int?, contextMax: Int, activity: String?) {
+            contextCurrent: Int?, contextMax: Int, activity: String?, permissionMode: String?) {
         let text = FileTail.tail(url)
         var model: String?
         var gitBranch: String?
@@ -115,6 +116,7 @@ enum SessionScanner {
         var contextCurrent: Int?   // latest assistant turn's context
         var contextMax = 0         // peak context seen in the tail
         var activity: String?      // latest assistant action (running tool / message)
+        var permissionMode: String?
 
         // Newest to oldest: keep the first value seen for model/branch and the
         // first (latest) assistant usage as the current context.
@@ -148,8 +150,11 @@ enum SessionScanner {
                ClaudePaths.encodeCwd(c) == projectDirName {
                 matchedCwd = c
             }
+            if permissionMode == nil, let p = obj["permissionMode"] as? String, !p.isEmpty {
+                permissionMode = p
+            }
         }
-        return (model, gitBranch, matchedCwd, contextCurrent, contextMax, activity)
+        return (model, gitBranch, matchedCwd, contextCurrent, contextMax, activity, permissionMode)
     }
 
     /// Summarizes an assistant message's content blocks into a one-line activity:

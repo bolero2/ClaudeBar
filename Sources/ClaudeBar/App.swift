@@ -58,6 +58,8 @@ enum Main {
             let what = args[i + 1]
             let path = args[i + 2]
             MainActor.assumeIsolated {
+                if args.contains("en") { AppSettings.shared.language = "en" }
+                else if args.contains("ko") { AppSettings.shared.language = "ko" }
                 if what == "logo" {
                     Diagnostics.renderLogo(to: path)
                 } else {
@@ -74,12 +76,14 @@ enum Main {
 struct ClaudeBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var state = AppState.shared
+    @ObservedObject private var settings = AppSettings.shared
 
     var body: some Scene {
         MenuBarExtra {
             RootView()
                 .environmentObject(state)
                 .onAppear { state.refresh() }   // freshen on each open
+                .id(settings.language)          // rebuild on language change
         } label: {
             // Sparkle + live-session count. Switches to a warning triangle when
             // a live session's context crosses the threshold.

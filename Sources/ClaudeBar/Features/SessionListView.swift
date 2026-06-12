@@ -40,7 +40,7 @@ struct SessionListView: View {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
-                    TextField("프로젝트 검색", text: $query)
+                    TextField(L("프로젝트 검색"), text: $query)
                         .textFieldStyle(.plain)
                         .font(.system(size: 12))
                     if !query.isEmpty {
@@ -56,7 +56,7 @@ struct SessionListView: View {
             HStack(spacing: 0) {
                 ForEach(SessionFilter.allCases) { f in
                     Button { filter = f } label: {
-                        Text(f.title)
+                        Text(L(f.title))
                             .font(.system(size: 11, weight: filter == f ? .semibold : .regular))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 4)
@@ -95,18 +95,18 @@ struct SessionListView: View {
 
         return VStack(alignment: .leading, spacing: 4) {
             if pinned.isEmpty && live.isEmpty && recent.isEmpty {
-                EmptyHint(text: query.isEmpty ? "세션을 찾을 수 없습니다." : "검색 결과가 없습니다.")
+                EmptyHint(text: query.isEmpty ? L("세션을 찾을 수 없습니다.") : L("검색 결과가 없습니다."))
             }
             if !pinned.isEmpty {
-                SectionHeader(title: "즐겨찾기", count: nil)
+                SectionHeader(title: L("즐겨찾기"), count: nil)
                 ForEach(pinned) { SessionRow(session: $0) }
             }
             if !live.isEmpty {
-                SectionHeader(title: "실행 중", count: live.count)
+                SectionHeader(title: L("실행 중"), count: live.count)
                 ForEach(live) { SessionRow(session: $0) }
             }
             if !recent.isEmpty {
-                SectionHeader(title: "최근 세션", count: nil)
+                SectionHeader(title: L("최근 세션"), count: nil)
                 ForEach(Array(recent)) { SessionRow(session: $0) }
             }
         }
@@ -121,6 +121,16 @@ private struct SessionRow: View {
     @State private var hovering = false
 
     private var pinned: Bool { settings.isPinned(session.projectDirName) }
+
+    /// A compact badge for non-default permission modes.
+    private var modeBadge: (text: String, color: Color)? {
+        switch session.permissionMode {
+        case "plan": return ("PLAN", .blue)
+        case "acceptEdits": return ("ACCEPT", .orange)
+        case "bypassPermissions": return ("BYPASS", .red)
+        default: return nil
+        }
+    }
 
     /// Recent (ended) rows are muted to grayscale until hovered.
     private var muted: Bool { session.live == nil && !hovering }
@@ -151,6 +161,15 @@ private struct SessionRow: View {
                                 .font(.system(size: 10))
                                 .foregroundStyle(.secondary)
                                 .labelStyle(.titleAndIcon)
+                        }
+                        if let mode = modeBadge {
+                            Text(mode.text)
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(mode.color)
+                                .clipShape(Capsule())
                         }
                     }
                     Text(session.cwd)
@@ -203,22 +222,22 @@ private struct SessionRow: View {
         .onHover { hovering = $0 }
         .animation(.easeInOut(duration: 0.15), value: hovering)
         .help(session.live != nil
-              ? "클릭: 해당 터미널 탭을 앞으로"
-              : "클릭: 새 터미널에서 이 세션 복구 (claude --resume)")
+              ? L("클릭: 해당 터미널 탭을 앞으로")
+              : L("클릭: 새 터미널에서 이 세션 복구 (claude --resume)"))
         .contextMenu {
-            Button(pinned ? "즐겨찾기 제거" : "즐겨찾기 추가") {
+            Button(pinned ? L("즐겨찾기 제거") : L("즐겨찾기 추가")) {
                 settings.togglePin(session.projectDirName)
             }
             Divider()
             if session.live != nil {
-                Button("터미널 앞으로") { state.activate(session) }
-                Button("세션 종료 (kill)", role: .destructive) { state.killSession(session) }
+                Button(L("터미널 앞으로")) { state.activate(session) }
+                Button(L("세션 종료 (kill)"), role: .destructive) { state.killSession(session) }
             } else {
-                Button("새 터미널에서 복구") { state.activate(session) }
+                Button(L("새 터미널에서 복구")) { state.activate(session) }
             }
             Divider()
-            Button("Finder에서 열기") { state.revealInFinder(session.cwd) }
-            Button("경로 복사") { state.copyPath(session.cwd) }
+            Button(L("Finder에서 열기")) { state.revealInFinder(session.cwd) }
+            Button(L("경로 복사")) { state.copyPath(session.cwd) }
         }
     }
 
@@ -260,7 +279,7 @@ private struct ContextBar: View {
                 .monospacedDigit()
                 .fixedSize()
         }
-        .help("컨텍스트 사용량: \(tokens.formatted()) / \(limit.formatted()) 토큰")
+        .help("\(L("컨텍스트")): \(tokens.formatted()) / \(limit.formatted()) \(L("토큰"))")
     }
 
     private var color: Color {

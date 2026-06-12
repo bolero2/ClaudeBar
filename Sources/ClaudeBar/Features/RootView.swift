@@ -64,25 +64,20 @@ struct RootView: View {
             Text("Claude Bar")
                 .font(.system(size: 13, weight: .semibold))
             if state.liveSessionCount > 0 {
-                Text("\(state.liveSessionCount) 실행 중")
+                Text("\(state.liveSessionCount) \(L("실행 중"))")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.green)
             }
             if state.contextWarning {
-                Label("컨텍스트 \(Int(state.peakLiveContextFraction * 100))%",
+                Label("\(L("컨텍스트")) \(Int(state.peakLiveContextFraction * 100))%",
                       systemImage: "exclamationmark.triangle.fill")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(.orange)
                     .labelStyle(.titleAndIcon)
             }
             Spacer()
-            Button {
-                state.newSessionInteractive()
-            } label: {
-                Image(systemName: "plus")
-            }
-            .buttonStyle(.plain)
-            .help("새 세션 시작 (디렉토리 선택)")
+            NewSessionButton()
+            .help(L("새 세션 시작 (디렉토리 선택)"))
             Button {
                 state.refresh()
             } label: {
@@ -93,7 +88,7 @@ struct RootView: View {
                                : .default, value: state.isRefreshing)
             }
             .buttonStyle(.plain)
-            .help("새로고침")
+            .help(L("새로고침"))
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -107,7 +102,7 @@ struct RootView: View {
                 } label: {
                     VStack(spacing: 2) {
                         Image(systemName: t.symbol).font(.system(size: 12))
-                        Text(t.title).font(.system(size: 10))
+                        Text(L(t.title)).font(.system(size: 10))
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 6)
@@ -123,10 +118,24 @@ struct RootView: View {
         .padding(.vertical, 4)
     }
 
+    @ViewBuilder private func NewSessionButton() -> some View {
+        Menu {
+            Button(L("새 세션")) { state.newSessionInteractive() }
+            Button(L("새 세션 · 권한 건너뛰기")) {
+                state.newSessionInteractive(skipPermissions: true)
+            }
+        } label: {
+            Image(systemName: "plus")
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+    }
+
     private var footer: some View {
         HStack {
             if let last = state.lastRefresh {
-                Text("업데이트 \(Format.ago(last))")
+                Text("\(L("업데이트")) \(Format.ago(last))")
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
             }
@@ -134,7 +143,7 @@ struct RootView: View {
             Button {
                 NSApplication.shared.terminate(nil)
             } label: {
-                Text("종료").font(.system(size: 10))
+                Text(L("끝내기")).font(.system(size: 10))
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
