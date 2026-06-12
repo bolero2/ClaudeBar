@@ -99,7 +99,7 @@ struct DashboardView: View {
 
     @ViewBuilder private var detail: some View {
         switch tab {
-        case .sessions: SessionListView(scroll: !screenshot)
+        case .sessions: SessionListView(scroll: !screenshot, queueEditable: true)
         case .usage: UsageView(scroll: !screenshot)
         case .mcp: MCPView(scroll: !screenshot)
         case .account: AccountView(scroll: !screenshot)

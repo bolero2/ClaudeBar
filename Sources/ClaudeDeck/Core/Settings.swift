@@ -19,6 +19,7 @@ final class AppSettings: ObservableObject {
         static let language = "language"                      // "en" | "ko"
         static let compactTemplates = "compactTemplates"      // JSON-encoded [CompactTemplate]
         static let autoCheckUpdates = "autoCheckUpdates"      // check GitHub releases on launch
+        static let scheduledQueues = "scheduledQueues"        // JSON [sessionId: [ScheduledPrompt]]
     }
 
     /// Built-in `/compact` presets, used until the user edits the list. The first
@@ -52,6 +53,14 @@ final class AppSettings: ObservableObject {
             }
         }
     }
+    /// Per-session queue of prompts to auto-inject, keyed by session id.
+    @Published var scheduledQueues: [String: [ScheduledPrompt]] {
+        didSet {
+            if let data = try? JSONEncoder().encode(scheduledQueues) {
+                d.set(data, forKey: Key.scheduledQueues)
+            }
+        }
+    }
 
     func isPinned(_ projectDirName: String) -> Bool {
         pinnedProjects.contains(projectDirName)
@@ -81,6 +90,43 @@ final class AppSettings: ObservableObject {
         compactTemplates.removeAll { $0.id == id }
     }
 
+    // MARK: - Scheduled prompt queues
+
+    func queue(for sessionId: String) -> [ScheduledPrompt] {
+        scheduledQueues[sessionId] ?? []
+    }
+
+    func addPrompt(_ text: String, to sessionId: String) {
+        var q = scheduledQueues[sessionId] ?? []
+        q.append(ScheduledPrompt(text: text))
+        scheduledQueues[sessionId] = q
+    }
+
+    func removePrompt(_ promptId: String, from sessionId: String) {
+        guard var q = scheduledQueues[sessionId] else { return }
+        q.removeAll { $0.id == promptId }
+        scheduledQueues[sessionId] = q.isEmpty ? nil : q
+    }
+
+    func movePrompt(in sessionId: String, from: Int, to: Int) {
+        guard var q = scheduledQueues[sessionId],
+              q.indices.contains(from), to >= 0, to < q.count else { return }
+        q.insert(q.remove(at: from), at: to)
+        scheduledQueues[sessionId] = q
+    }
+
+    func clearQueue(_ sessionId: String) {
+        scheduledQueues[sessionId] = nil
+    }
+
+    /// Pops the first prompt (used by the auto-injector); clears the key if empty.
+    func dequeueFirst(_ sessionId: String) -> ScheduledPrompt? {
+        guard var q = scheduledQueues[sessionId], !q.isEmpty else { return nil }
+        let first = q.removeFirst()
+        scheduledQueues[sessionId] = q.isEmpty ? nil : q
+        return first
+    }
+
     private init() {
         notifyWaiting = (d.object(forKey: Key.notifyWaiting) as? Bool) ?? true
         notifyContext = (d.object(forKey: Key.notifyContext) as? Bool) ?? true
@@ -91,6 +137,12 @@ final class AppSettings: ObservableObject {
         pinnedProjects = (d.array(forKey: Key.pinnedProjects) as? [String]) ?? []
         language = (d.string(forKey: Key.language)) ?? Loc.systemDefault
         autoCheckUpdates = (d.object(forKey: Key.autoCheckUpdates) as? Bool) ?? true
+        if let data = d.data(forKey: Key.scheduledQueues),
+           let decoded = try? JSONDecoder().decode([String: [ScheduledPrompt]].self, from: data) {
+            scheduledQueues = decoded
+        } else {
+            scheduledQueues = [:]
+        }
         if let data = d.data(forKey: Key.compactTemplates),
            let decoded = try? JSONDecoder().decode([CompactTemplate].self, from: data) {
             compactTemplates = decoded

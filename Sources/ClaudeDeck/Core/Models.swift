@@ -80,6 +80,20 @@ enum SessionContext {
     }
 }
 
+// MARK: - Scheduled prompts (input queue)
+
+/// One queued prompt that is auto-typed into a session the next time it goes
+/// idle. The app injects them one at a time: prompt → work → next prompt → …
+struct ScheduledPrompt: Identifiable, Codable, Equatable {
+    var id: String
+    var text: String
+
+    init(id: String = UUID().uuidString, text: String) {
+        self.id = id
+        self.text = text
+    }
+}
+
 // MARK: - Compact templates
 
 /// A saved `/compact` instruction the user can apply to a live session from the

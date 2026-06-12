@@ -21,6 +21,9 @@ final class AppState: ObservableObject {
     @Published var lastRefresh: Date?
     @Published var isRefreshing = false
     @Published var isCheckingUpdate = false
+    /// Session ids whose prompt queue is armed (auto-injecting). Runtime-only —
+    /// reset on relaunch so queues never resume injecting unexpectedly.
+    @Published var runningQueues: Set<String> = []
 
     /// Wired up by `AppDelegate` to open the full dashboard window.
     var onOpenDashboard: (() -> Void)?
@@ -93,6 +96,7 @@ final class AppState: ObservableObject {
                 self.lastRefresh = Date()
                 self.isRefreshing = false
                 self.evaluateSessionNotifications(sessions)
+                self.processPromptQueues(sessions)
             }
         }
     }
@@ -167,7 +171,10 @@ final class AppState: ObservableObject {
                     waitNotified[id] = true
                 } else if Date().timeIntervalSince(since) >= Self.waitDebounce,
                           waitNotified[id] != true {
-                    if settings.notifyWaiting {
+                    // Don't nag about idle input when a queue is about to fill it.
+                    let armedQueue = runningQueues.contains(id)
+                        && !AppSettings.shared.queue(for: id).isEmpty
+                    if settings.notifyWaiting && !armedQueue {
                         NotificationService.post(
                             title: L("입력 대기 중"),
                             body: "\(s.folderName) \(L("세션이 입력을 기다립니다."))",
@@ -314,6 +321,50 @@ final class AppState: ObservableObject {
         guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns") else { return nil }
         return NSImage(contentsOf: url)
     }()
+
+    // MARK: - Scheduled prompt queue
+
+    private var queueLastInjection: [String: Date] = [:]
+
+    func isQueueRunning(_ sessionId: String) -> Bool { runningQueues.contains(sessionId) }
+
+    /// Arms a session's queue so its prompts auto-inject when the session idles.
+    func startQueue(_ sessionId: String) {
+        guard !AppSettings.shared.queue(for: sessionId).isEmpty else { return }
+        runningQueues.insert(sessionId)
+    }
+
+    func stopQueue(_ sessionId: String) {
+        runningQueues.remove(sessionId)
+    }
+
+    /// For each armed, live, idle session, injects the next queued prompt once
+    /// the previous one has been consumed (new activity seen since last inject).
+    private func processPromptQueues(_ sessions: [Session]) {
+        guard !runningQueues.isEmpty else { return }
+        let settings = AppSettings.shared
+        for s in sessions where s.live != nil {
+            let id = s.id
+            guard runningQueues.contains(id) else { continue }
+            guard !settings.queue(for: id).isEmpty else { runningQueues.remove(id); continue }
+            // Inject only when the session is idle (task finished, awaiting input).
+            guard s.status == .waiting else { continue }
+            // And only after the previously injected prompt produced activity,
+            // so we never fire twice for the same idle window.
+            if let last = queueLastInjection[id], s.lastActivity <= last { continue }
+            guard let next = settings.dequeueFirst(id), let live = s.live else {
+                runningQueues.remove(id); continue
+            }
+            queueLastInjection[id] = Date()
+            Task.detached(priority: .userInitiated) {
+                _ = TerminalActivator.injectText(live, text: next.text)
+            }
+            if settings.queue(for: id).isEmpty { runningQueues.remove(id) }
+        }
+        // Drop injection bookkeeping for sessions no longer live.
+        let liveIDs = Set(sessions.filter { $0.live != nil }.map { $0.id })
+        queueLastInjection = queueLastInjection.filter { liveIDs.contains($0.key) }
+    }
 
     // MARK: - Slash commands (/compact, /clear)
 

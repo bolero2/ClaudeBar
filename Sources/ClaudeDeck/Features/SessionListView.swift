@@ -18,6 +18,9 @@ struct SessionListView: View {
     @State private var query = ""
     @State private var filter: SessionFilter = .all
     var scroll = true
+    /// Dashboard passes true to allow inline prompt-queue editing; the toolbar
+    /// keeps it read-only.
+    var queueEditable = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -99,15 +102,15 @@ struct SessionListView: View {
             }
             if !pinned.isEmpty {
                 SectionHeader(title: L("즐겨찾기"), count: nil)
-                ForEach(pinned) { SessionRow(session: $0) }
+                ForEach(pinned) { SessionRow(session: $0, queueEditable: queueEditable) }
             }
             if !live.isEmpty {
                 SectionHeader(title: L("실행 중"), count: live.count)
-                ForEach(live) { SessionRow(session: $0) }
+                ForEach(live) { SessionRow(session: $0, queueEditable: queueEditable) }
             }
             if !recent.isEmpty {
                 SectionHeader(title: L("최근 세션"), count: nil)
-                ForEach(Array(recent)) { SessionRow(session: $0) }
+                ForEach(Array(recent)) { SessionRow(session: $0, queueEditable: queueEditable) }
             }
         }
         .padding(8)
@@ -118,7 +121,9 @@ private struct SessionRow: View {
     @EnvironmentObject var state: AppState
     @ObservedObject private var settings = AppSettings.shared
     let session: Session
+    var queueEditable = false
     @State private var hovering = false
+    @State private var showQueue = false
 
     private var pinned: Bool { settings.isPinned(session.projectDirName) }
 
@@ -136,6 +141,7 @@ private struct SessionRow: View {
     private var muted: Bool { session.live == nil && !hovering }
 
     var body: some View {
+        VStack(spacing: 0) {
         Button {
             state.activate(session)
         } label: {
@@ -216,6 +222,12 @@ private struct SessionRow: View {
                 ContextBar(fraction: fraction, tokens: tokens, limit: session.contextLimit)
                     .padding(.leading, 22)
             }
+
+            // Toolbar shows the queue read-only; the dashboard edits it below.
+            if !queueEditable, session.live != nil {
+                PromptQueueBadge(session: session)
+                    .padding(.leading, 22)
+            }
             }
             .padding(.vertical, 6)
             .padding(.horizontal, 8)
@@ -223,6 +235,13 @@ private struct SessionRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+
+        // Dashboard-only queue editor, outside the activate button so its
+        // controls (text field, buttons) aren't swallowed by the row tap.
+        if queueEditable, session.live != nil {
+            queueArea
+        }
+        }
         .background(rowBackground)
         .cornerRadius(6)
         .grayscale(muted ? 1.0 : 0.0)
@@ -259,6 +278,42 @@ private struct SessionRow: View {
             Button(L("Finder에서 열기")) { state.revealInFinder(session.cwd) }
             Button(L("경로 복사")) { state.copyPath(session.cwd) }
         }
+    }
+
+    /// Collapsible "예약 입력" area shown under live rows in the dashboard.
+    private var queueArea: some View {
+        let count = settings.queue(for: session.id).count
+        let running = state.isQueueRunning(session.id)
+        return VStack(alignment: .leading, spacing: 4) {
+            Button { showQueue.toggle() } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: showQueue ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 9))
+                    Image(systemName: "clock.arrow.circlepath").font(.system(size: 10))
+                    Text(L("예약 입력")).font(.system(size: 11, weight: .medium))
+                    if count > 0 {
+                        Text("(\(count))").font(.system(size: 11)).foregroundStyle(.secondary)
+                    }
+                    if running {
+                        Text(L("실행 중"))
+                            .font(.system(size: 8, weight: .bold))
+                            .padding(.horizontal, 4).padding(.vertical, 1)
+                            .background(Color.green.opacity(0.2)).clipShape(Capsule())
+                            .foregroundStyle(.green)
+                    }
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if showQueue {
+                PromptQueueEditor(session: session)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.bottom, 8)
+        .padding(.leading, 12)
     }
 
     private var rowBackground: Color {

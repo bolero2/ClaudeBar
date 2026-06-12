@@ -103,6 +103,62 @@ enum TerminalActivator {
         }
     }
 
+    /// Like `sendText`, but types into the session's tab WITHOUT bringing the
+    /// terminal to the front — used by the prompt-queue auto-injector so it
+    /// doesn't steal focus on every step.
+    @discardableResult
+    static func injectText(_ proc: LiveProcess, text: String) -> Result {
+        guard let tty = proc.tty else { return .noTTY }
+        let devTTY = "/dev/" + tty
+        let line = text
+            .replacingOccurrences(of: "\r", with: " ")
+            .replacingOccurrences(of: "\n", with: " ")
+        let program = proc.termProgram ?? ""
+        if program.contains("Apple_Terminal") {
+            return run(appleTerminalInjectScript(devTTY, line))
+        } else if program.lowercased().contains("iterm") {
+            return run(iTermInjectScript(devTTY, line))
+        } else {
+            if case .activated = run(appleTerminalInjectScript(devTTY, line)) { return .activated }
+            return run(iTermInjectScript(devTTY, line))
+        }
+    }
+
+    private static func appleTerminalInjectScript(_ devTTY: String, _ line: String) -> String {
+        // No `activate` / window reordering → the tab stays in the background.
+        """
+        tell application "Terminal"
+          repeat with w in windows
+            repeat with t in tabs of w
+              if tty of t is "\(devTTY)" then
+                do script "\(escapeAS(line))" in t
+                return "ok"
+              end if
+            end repeat
+          end repeat
+        end tell
+        return "notfound"
+        """
+    }
+
+    private static func iTermInjectScript(_ devTTY: String, _ line: String) -> String {
+        """
+        tell application "iTerm2"
+          repeat with w in windows
+            repeat with t in tabs of w
+              repeat with s in sessions of t
+                if tty of s is "\(devTTY)" then
+                  tell s to write text "\(escapeAS(line))"
+                  return "ok"
+                end if
+              end repeat
+            end repeat
+          end repeat
+        end tell
+        return "notfound"
+        """
+    }
+
     private static func escapeShell(_ s: String) -> String {
         s.replacingOccurrences(of: "'", with: "'\\''")
     }
