@@ -47,6 +47,10 @@ struct SettingsView: View {
                     }
                 }
 
+                section(L("compact 템플릿")) {
+                    CompactTemplatesEditor(settings: settings)
+                }
+
                 section(L("시스템")) {
                     Toggle(L("로그인 시 자동 실행"), isOn: Binding(
                         get: { settings.launchAtLogin },
@@ -93,5 +97,77 @@ struct SettingsView: View {
                 .monospacedDigit()
                 .frame(width: 34, alignment: .trailing)
         }
+    }
+}
+
+/// Editable list of saved `/compact` templates, surfaced in each session's
+/// right-click → Compact menu.
+private struct CompactTemplatesEditor: View {
+    @ObservedObject var settings: AppSettings
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(settings.compactTemplates) { template in
+                CompactTemplateRow(template: template, settings: settings)
+            }
+            Button {
+                settings.addCompactTemplate(name: L("새 템플릿"), prompt: "")
+            } label: {
+                Label(L("새 템플릿 추가"), systemImage: "plus")
+                    .font(.system(size: 11))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Color.accentColor)
+            Text(L("세션 우클릭 → 압축에서 사용합니다."))
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+private struct CompactTemplateRow: View {
+    let template: CompactTemplate
+    @ObservedObject var settings: AppSettings
+    @State private var name: String
+    @State private var prompt: String
+
+    init(template: CompactTemplate, settings: AppSettings) {
+        self.template = template
+        self.settings = settings
+        _name = State(initialValue: template.name)
+        _prompt = State(initialValue: template.prompt)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                TextField(L("이름"), text: $name)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 11))
+                    .onChange(of: name) { _ in commit() }
+                Button {
+                    settings.deleteCompactTemplate(template.id)
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            TextEditor(text: $prompt)
+                .font(.system(size: 10))
+                .frame(height: 46)
+                .overlay(RoundedRectangle(cornerRadius: 4)
+                    .stroke(Color.primary.opacity(0.1)))
+                .onChange(of: prompt) { _ in commit() }
+        }
+        .padding(6)
+        .background(Color.primary.opacity(0.03))
+        .cornerRadius(6)
+    }
+
+    private func commit() {
+        settings.updateCompactTemplate(
+            CompactTemplate(id: template.id, name: name, prompt: prompt))
     }
 }

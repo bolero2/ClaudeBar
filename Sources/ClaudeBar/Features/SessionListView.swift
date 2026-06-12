@@ -239,6 +239,18 @@ private struct SessionRow: View {
             Divider()
             if session.live != nil {
                 Button(L("터미널 앞으로")) { state.activate(session) }
+                Menu(L("압축 (/compact)")) {
+                    Button(L("기본 압축")) { state.compact(session) }
+                    if !settings.compactTemplates.isEmpty {
+                        Divider()
+                        ForEach(settings.compactTemplates) { t in
+                            Button(t.name) { state.compact(session, prompt: t.prompt) }
+                        }
+                    }
+                    Divider()
+                    Button(L("직접 입력…")) { state.compactWithCustomPrompt(session) }
+                }
+                Button(L("대화 비우기 (/clear)")) { state.clearSession(session) }
                 Button(L("세션 종료 (kill)"), role: .destructive) { state.killSession(session) }
             } else {
                 Button(L("새 터미널에서 복구")) { state.activate(session) }

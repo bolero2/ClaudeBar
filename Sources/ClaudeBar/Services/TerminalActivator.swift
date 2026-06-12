@@ -52,6 +52,29 @@ enum TerminalActivator {
         return open("cd '\(escapeShell(cwd))' && claude\(flag)")
     }
 
+    /// Types a line of text (e.g. a `/compact` slash command) into the live
+    /// session's terminal tab, brings it to the front, and submits it. Only
+    /// meaningful at the prompt; if the session is busy, Claude Code queues it.
+    @discardableResult
+    static func sendText(_ proc: LiveProcess, text: String) -> Result {
+        guard let tty = proc.tty else { return .noTTY }
+        let devTTY = "/dev/" + tty
+        // A slash command is a single line; collapse newlines so the whole
+        // instruction is submitted as one prompt rather than several.
+        let line = text
+            .replacingOccurrences(of: "\r", with: " ")
+            .replacingOccurrences(of: "\n", with: " ")
+        let program = proc.termProgram ?? ""
+        if program.contains("Apple_Terminal") {
+            return run(appleTerminalSendScript(devTTY, line))
+        } else if program.lowercased().contains("iterm") {
+            return run(iTermSendScript(devTTY, line))
+        } else {
+            if case .activated = run(appleTerminalSendScript(devTTY, line)) { return .activated }
+            return run(iTermSendScript(devTTY, line))
+        }
+    }
+
     private static func escapeShell(_ s: String) -> String {
         s.replacingOccurrences(of: "'", with: "'\\''")
     }
@@ -103,6 +126,48 @@ enum TerminalActivator {
                 activate
                 return "ok"
               end if
+            end repeat
+          end repeat
+        end tell
+        return "notfound"
+        """
+    }
+
+    private static func appleTerminalSendScript(_ devTTY: String, _ line: String) -> String {
+        // `do script ... in t` types the text into the existing tab's tty and
+        // submits it (adds a return), which Claude Code receives as a prompt.
+        """
+        tell application "Terminal"
+          repeat with w in windows
+            repeat with t in tabs of w
+              if tty of t is "\(devTTY)" then
+                set selected of t to true
+                set index of w to 1
+                activate
+                do script "\(escapeAS(line))" in t
+                return "ok"
+              end if
+            end repeat
+          end repeat
+        end tell
+        return "notfound"
+        """
+    }
+
+    private static func iTermSendScript(_ devTTY: String, _ line: String) -> String {
+        """
+        tell application "iTerm2"
+          repeat with w in windows
+            repeat with t in tabs of w
+              repeat with s in sessions of t
+                if tty of s is "\(devTTY)" then
+                  tell t to select
+                  tell s to select
+                  activate
+                  tell s to write text "\(escapeAS(line))"
+                  return "ok"
+                end if
+              end repeat
             end repeat
           end repeat
         end tell

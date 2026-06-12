@@ -21,7 +21,7 @@ enum Loc {
     static let en: [String: String] = [
         // Tabs / chrome
         "세션": "Sessions", "사용량": "Usage", "계정": "Account", "설정": "Settings",
-        "새로고침": "Refresh", "끝내기": "Quit",
+        "새로고침": "Refresh", "끝내기": "Quit", "대시보드 열기": "Open dashboard",
         "새 세션 시작 (디렉토리 선택)": "New session (choose directory)",
         "컨텍스트": "Context", "업데이트": "Updated",
 
@@ -33,6 +33,11 @@ enum Loc {
         "검색 결과가 없습니다.": "No results.",
         "터미널 앞으로": "Bring terminal to front",
         "세션 종료 (kill)": "Kill session",
+        "압축 (/compact)": "Compact (/compact)", "기본 압축": "Plain compact",
+        "직접 입력…": "Custom…", "대화 비우기 (/clear)": "Clear conversation (/clear)",
+        "압축 문구 입력": "Compact instruction", "압축": "Compact", "취소": "Cancel",
+        "예: 핵심 결정과 미해결 이슈만 남겨줘": "e.g. keep only key decisions and open issues",
+        "이 세션의 대화를 비울까요?": "Clear this session's conversation?", "비우기": "Clear",
         "새 터미널에서 복구": "Resume in a new terminal",
         "Finder에서 열기": "Reveal in Finder", "경로 복사": "Copy path",
         "클릭: 해당 터미널 탭을 앞으로": "Click: bring its terminal tab to front",
@@ -75,6 +80,9 @@ enum Loc {
         "터미널": "Terminal", "새 세션 / 복구에 사용": "For new sessions / resume",
         "자동": "Auto", "시스템": "System", "로그인 시 자동 실행": "Launch at login",
         "언어": "Language", "새 세션": "New session",
+        "compact 템플릿": "Compact templates", "새 템플릿": "New template",
+        "새 템플릿 추가": "Add template", "이름": "Name",
+        "세션 우클릭 → 압축에서 사용합니다.": "Used from a session's right-click → Compact menu.",
         "새 세션 · 권한 건너뛰기": "New session · skip permissions",
         "Claude Code를 시작할 디렉토리를 선택하세요": "Choose a directory to start Claude Code in",
 

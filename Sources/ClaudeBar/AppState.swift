@@ -21,6 +21,9 @@ final class AppState: ObservableObject {
     @Published var lastRefresh: Date?
     @Published var isRefreshing = false
 
+    /// Wired up by `AppDelegate` to open the full dashboard window.
+    var onOpenDashboard: (() -> Void)?
+
     private var sessionTimer: AnyCancellable?
     private var usageTimer: AnyCancellable?
     private var usageRunning = false
@@ -292,6 +295,53 @@ final class AppState: ObservableObject {
             kill(pid, SIGTERM)
             try? await Task.sleep(nanoseconds: 600_000_000)
             await MainActor.run { self.refreshSessions() }
+        }
+    }
+
+    // MARK: - Slash commands (/compact, /clear)
+
+    /// Types a slash command into a live session's terminal tab and submits it.
+    func sendSlashCommand(_ session: Session, _ command: String) {
+        guard let live = session.live else { return }
+        Task.detached(priority: .userInitiated) {
+            _ = TerminalActivator.sendText(live, text: command)
+        }
+    }
+
+    /// `/compact`, optionally with a continuation instruction.
+    func compact(_ session: Session, prompt: String = "") {
+        let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        sendSlashCommand(session, trimmed.isEmpty ? "/compact" : "/compact \(trimmed)")
+    }
+
+    /// Prompts for a one-off `/compact` instruction, then sends it.
+    func compactWithCustomPrompt(_ session: Session) {
+        let alert = NSAlert()
+        alert.messageText = L("압축 문구 입력")
+        alert.informativeText = "\(session.folderName) · /compact"
+        alert.addButton(withTitle: L("압축"))
+        alert.addButton(withTitle: L("취소"))
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 22))
+        field.placeholderString = L("예: 핵심 결정과 미해결 이슈만 남겨줘")
+        alert.accessoryView = field
+        NSApp.activate(ignoringOtherApps: true)
+        alert.window.initialFirstResponder = field
+        if alert.runModal() == .alertFirstButtonReturn {
+            compact(session, prompt: field.stringValue)
+        }
+    }
+
+    /// `/clear` wipes the conversation, so confirm before sending.
+    func clearSession(_ session: Session) {
+        let alert = NSAlert()
+        alert.messageText = L("이 세션의 대화를 비울까요?")
+        alert.informativeText = "\(session.folderName) · /clear"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: L("비우기"))
+        alert.addButton(withTitle: L("취소"))
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn {
+            sendSlashCommand(session, "/clear")
         }
     }
 

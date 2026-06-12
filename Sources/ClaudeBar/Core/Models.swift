@@ -80,6 +80,22 @@ enum SessionContext {
     }
 }
 
+// MARK: - Compact templates
+
+/// A saved `/compact` instruction the user can apply to a live session from the
+/// session's right-click menu. An empty `prompt` means a plain `/compact`.
+struct CompactTemplate: Identifiable, Codable, Equatable {
+    var id: String
+    var name: String
+    var prompt: String
+
+    init(id: String = UUID().uuidString, name: String, prompt: String) {
+        self.id = id
+        self.name = name
+        self.prompt = prompt
+    }
+}
+
 // MARK: - Live process
 
 /// A running `claude` CLI process discovered via `ps`/`lsof`, used to mark
