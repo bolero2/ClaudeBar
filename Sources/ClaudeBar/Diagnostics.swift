@@ -113,6 +113,40 @@ enum Diagnostics {
         print("렌더 저장: \(path)")
     }
 
+    /// Renders the full dashboard window to a PNG. Usage:
+    /// `ClaudeBar --render dashboard <path> [mock]`.
+    @MainActor
+    static func renderDashboard(to path: String, mock: Bool = false) {
+        let state: AppState
+        if mock {
+            state = MockData.state()
+        } else {
+            state = AppState()
+            state.sessions = SessionScanner.scan()
+            let config = ConfigStore()
+            state.globalMCP = config?.globalMCPServers() ?? []
+            state.projectMCP = config?.projectMCPServers() ?? []
+            state.account = config?.account()
+            state.usage = UsageService.snapshot()
+        }
+        let view = AnyView(
+            DashboardView(screenshot: true)
+                .frame(width: 880, height: 560)
+                .background(Color(nsColor: .windowBackgroundColor))
+                .environmentObject(state)
+        )
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 2
+        guard let image = renderer.nsImage,
+              let tiff = image.tiffRepresentation,
+              let rep = NSBitmapImageRep(data: tiff),
+              let png = rep.representation(using: .png, properties: [:]) else {
+            print("대시보드 렌더 실패"); return
+        }
+        try? png.write(to: URL(fileURLWithPath: path))
+        print("대시보드 렌더 저장: \(path)")
+    }
+
     /// Renders the app logo to a PNG (for README / branding).
     @MainActor
     static func renderLogo(to path: String) {

@@ -64,6 +64,8 @@ enum Main {
                 else if args.contains("ko") { AppSettings.shared.language = "ko" }
                 if what == "logo" {
                     Diagnostics.renderLogo(to: path)
+                } else if what == "dashboard" {
+                    Diagnostics.renderDashboard(to: path, mock: args.contains("mock"))
                 } else {
                     let mock = args.contains("mock")
                     Diagnostics.render(tab: Tab(rawValue: what) ?? .sessions, to: path, mock: mock)
@@ -87,17 +89,25 @@ struct ClaudeBarApp: App {
 /// Owns the menu-bar status item + popover, the global hotkey, and notification
 /// click handling. The app is a pure menu-bar agent (no Dock icon).
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate, NSWindowDelegate {
     private var statusItem: NSStatusItem!
     private let popover = NSPopover()
     private var hotKey: HotKeyManager?
     private var cancellables = Set<AnyCancellable>()
+    private var dashboard: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         UNUserNotificationCenter.current().delegate = self
         NotificationService.requestAuthorization()
         AppState.shared.start()
+        AppState.shared.onOpenDashboard = { [weak self] in self?.openDashboard() }
+
+        // Dock icon (shown when the dashboard makes the app `.regular`).
+        if let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+           let icon = NSImage(contentsOf: iconURL) {
+            NSApp.applicationIconImage = icon
+        }
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.target = self
@@ -118,6 +128,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         // ⌥⌘C toggles the panel from anywhere.
         hotKey = HotKeyManager { [weak self] in
             Task { @MainActor in self?.togglePopover() }
+        }
+
+        // Launch straight into the dashboard window (e.g. `open -a ClaudeBar --args --dashboard`).
+        if CommandLine.arguments.contains("--dashboard") {
+            openDashboard()
         }
     }
 
@@ -142,6 +157,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             NSApp.activate(ignoringOtherApps: true)
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
+        }
+    }
+
+    // MARK: - Dashboard window
+
+    /// Opens (or re-focuses) the full dashboard window. While it's open the app
+    /// becomes a regular app (Dock icon + menu bar) so the window can take focus;
+    /// closing it returns to a pure menu-bar agent.
+    @objc func openDashboard() {
+        if popover.isShown { popover.performClose(nil) }
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+
+        if let w = dashboard {
+            w.makeKeyAndOrderFront(nil)
+            return
+        }
+        let host = NSHostingController(
+            rootView: DashboardView().environmentObject(AppState.shared))
+        let w = NSWindow(contentViewController: host)
+        w.title = "Claude Bar"
+        w.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+        w.setContentSize(NSSize(width: 880, height: 580))
+        w.center()
+        w.isReleasedWhenClosed = false
+        w.delegate = self
+        dashboard = w
+        w.makeKeyAndOrderFront(nil)
+    }
+
+    nonisolated func windowWillClose(_ notification: Notification) {
+        Task { @MainActor [weak self] in
+            self?.dashboard = nil
+            NSApp.setActivationPolicy(.accessory)   // back to menu-bar agent
         }
     }
 

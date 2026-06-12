@@ -78,6 +78,13 @@ struct RootView: View {
                     .labelStyle(.titleAndIcon)
             }
             Spacer()
+            Button {
+                state.onOpenDashboard?()
+            } label: {
+                Image(systemName: "macwindow")
+            }
+            .buttonStyle(.plain)
+            .help(L("대시보드 열기"))
             NewSessionButton()
             .help(L("새 세션 시작 (디렉토리 선택)"))
             Button {
