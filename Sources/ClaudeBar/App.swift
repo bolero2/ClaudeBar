@@ -104,8 +104,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         AppState.shared.onOpenDashboard = { [weak self] in self?.openDashboard() }
 
         // Dock icon (shown when the dashboard makes the app `.regular`).
-        if let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
-           let icon = NSImage(contentsOf: iconURL) {
+        if let icon = AppState.appIcon {
             NSApp.applicationIconImage = icon
         }
 

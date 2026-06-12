@@ -17,9 +17,12 @@ enum TerminalActivator {
     /// found (e.g. it was closed), falls back to opening a new window that
     /// resumes the session.
     @discardableResult
-    static func activate(_ proc: LiveProcess, cwd: String, sessionId: String) -> Result {
+    static func activate(_ proc: LiveProcess, cwd: String, sessionId: String,
+                         resumeModel: String? = nil, permissionMode: String? = nil,
+                         extendedContext: Bool = false) -> Result {
         guard let tty = proc.tty else {
-            return openResume(cwd: cwd, sessionId: sessionId)
+            return openResume(cwd: cwd, sessionId: sessionId, resumeModel: resumeModel,
+                              permissionMode: permissionMode, extendedContext: extendedContext)
         }
         let devTTY = "/dev/" + tty
 
@@ -34,14 +37,39 @@ enum TerminalActivator {
             result = run(iTermScript(devTTY))
         }
         if case .activated = result { return result }
-        return openResume(cwd: cwd, sessionId: sessionId)
+        return openResume(cwd: cwd, sessionId: sessionId, resumeModel: resumeModel,
+                          permissionMode: permissionMode, extendedContext: extendedContext)
     }
 
     /// Opens a new terminal window, cd's into the session's directory and runs
     /// `claude --resume <sessionId>` to restore an ended session.
+    ///
+    /// `claude --resume` does not reliably restore the original session's 1M
+    /// context window or permission mode, so we reconstruct those flags from the
+    /// session's detected state:
+    ///  - extended (1M) context → `--model '<base>[1m]'`
+    ///  - bypass / plan / acceptEdits → the matching permission flag
     @discardableResult
-    static func openResume(cwd: String, sessionId: String) -> Result {
-        open("cd '\(escapeShell(cwd))' && claude --resume \(sessionId)")
+    static func openResume(cwd: String, sessionId: String,
+                           resumeModel: String? = nil, permissionMode: String? = nil,
+                           extendedContext: Bool = false) -> Result {
+        var cmd = "cd '\(escapeShell(cwd))' && claude --resume \(sessionId)"
+        if extendedContext, let base = resumeModel.map(stripModelSuffix), !base.isEmpty {
+            cmd += " --model '\(base)[1m]'"
+        }
+        switch permissionMode {
+        case "bypassPermissions": cmd += " --dangerously-skip-permissions"
+        case "plan":              cmd += " --permission-mode plan"
+        case "acceptEdits":       cmd += " --permission-mode acceptEdits"
+        default: break
+        }
+        return open(cmd)
+    }
+
+    /// Drops a trailing `[1m]` marker to get the base model id (the transcript
+    /// records the base model; the 1M variant is re-requested via `--model`).
+    private static func stripModelSuffix(_ model: String) -> String {
+        model.hasSuffix("[1m]") ? String(model.dropLast(4)) : model
     }
 
     /// Opens a new terminal window and starts a fresh `claude` session in `cwd`,

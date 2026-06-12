@@ -253,11 +253,19 @@ final class AppState: ObservableObject {
         let cwd = session.cwd
         let id = session.id
         let live = session.live
+        // Reconstruct the original session's 1M window + permission mode on resume.
+        let model = session.model
+        let mode = session.permissionMode
+        let extended = session.contextLimit >= SessionContext.extendedWindow
         Task.detached(priority: .userInitiated) {
             if let live {
-                _ = TerminalActivator.activate(live, cwd: cwd, sessionId: id)
+                _ = TerminalActivator.activate(live, cwd: cwd, sessionId: id,
+                                               resumeModel: model, permissionMode: mode,
+                                               extendedContext: extended)
             } else {
-                _ = TerminalActivator.openResume(cwd: cwd, sessionId: id)
+                _ = TerminalActivator.openResume(cwd: cwd, sessionId: id,
+                                                 resumeModel: model, permissionMode: mode,
+                                                 extendedContext: extended)
             }
         }
     }
@@ -298,6 +306,14 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// The bundled app logo. NSAlert/Dialogs otherwise fall back to the
+    /// Launch-Services-registered icon, which is stale/generic for an ad-hoc
+    /// bundle run from an arbitrary path — so we set it explicitly.
+    static let appIcon: NSImage? = {
+        guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns") else { return nil }
+        return NSImage(contentsOf: url)
+    }()
+
     // MARK: - Slash commands (/compact, /clear)
 
     /// Types a slash command into a live session's terminal tab and submits it.
@@ -317,6 +333,7 @@ final class AppState: ObservableObject {
     /// Prompts for a one-off `/compact` instruction, then sends it.
     func compactWithCustomPrompt(_ session: Session) {
         let alert = NSAlert()
+        if let icon = Self.appIcon { alert.icon = icon }
         alert.messageText = L("압축 문구 입력")
         alert.informativeText = "\(session.folderName) · /compact"
         alert.addButton(withTitle: L("압축"))
@@ -334,6 +351,7 @@ final class AppState: ObservableObject {
     /// `/clear` wipes the conversation, so confirm before sending.
     func clearSession(_ session: Session) {
         let alert = NSAlert()
+        if let icon = Self.appIcon { alert.icon = icon }
         alert.messageText = L("이 세션의 대화를 비울까요?")
         alert.informativeText = "\(session.folderName) · /clear"
         alert.alertStyle = .warning
