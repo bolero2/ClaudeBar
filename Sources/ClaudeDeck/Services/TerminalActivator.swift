@@ -179,6 +179,13 @@ enum TerminalActivator {
 
     /// Reads the visible contents of the tab/session bound to `proc.tty`
     /// WITHOUT changing focus, and classifies Claude's state.
+    ///
+    /// Two cross-checked signals so a single point of failure can't cause the
+    /// *dangerous* misread (injecting while Claude is still working):
+    ///  1. Screen markers (primary, fast).
+    ///  2. Process CPU (backup): only consulted when the screen *looks* idle, to
+    ///     veto a false-idle if Claude Code's UI strings ever change and the
+    ///     markers stop matching — a streaming process still burns CPU.
     static func claudeScreenState(_ proc: LiveProcess) -> ScreenState {
         guard let tty = proc.tty else { return .unknown }
         let devTTY = "/dev/" + tty
@@ -188,7 +195,11 @@ enum TerminalActivator {
             : Shell.osascript(appleTerminalReadScript(devTTY))
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if text.isEmpty || text == "READ_FAIL" { return .unknown }
-        return screenIsBusy(text) ? .busy : .idle
+        if screenIsBusy(text) { return .busy }
+        // Screen looks idle — confirm the process isn't quietly streaming (which
+        // it would be if the busy markers above failed to match a newer UI).
+        if processBurningCPU(proc.pid) { return .busy }
+        return .idle
     }
 
     /// Busy markers seen in Claude Code's live spinner line: the interrupt hint
@@ -197,6 +208,40 @@ enum TerminalActivator {
     /// busy signal.
     static func screenIsBusy(_ text: String) -> Bool {
         text.contains("esc to interrupt") || text.contains("· ↓") || text.contains("· ↑")
+    }
+
+    /// True if `pid` accrues meaningful CPU over a short sample window — i.e. it's
+    /// actively computing (token streaming), not blocked waiting for input. Uses
+    /// cumulative CPU time deltas (precise) rather than `ps %cpu` (a decaying
+    /// lifetime average). Returns false if the pid can't be sampled, so a missing
+    /// process never *forces* a busy verdict.
+    static func processBurningCPU(_ pid: Int32, sample: TimeInterval = 0.6,
+                                  minCorePercent: Double = 8) -> Bool {
+        guard let t0 = cpuSeconds(pid) else { return false }
+        Thread.sleep(forTimeInterval: sample)
+        guard let t1 = cpuSeconds(pid) else { return false }
+        let usedCorePercent = (t1 - t0) / sample * 100
+        return usedCorePercent >= minCorePercent
+    }
+
+    /// Cumulative CPU time (user+sys) of a pid in seconds, via `ps -o cputime`.
+    /// Parses `[[DD-]HH:]MM:SS[.cc]`. nil if the process is gone/unreadable.
+    private static func cpuSeconds(_ pid: Int32) -> Double? {
+        let out = Shell.run("/bin/ps", ["-p", "\(pid)", "-o", "cputime="])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !out.isEmpty else { return nil }
+        // Split optional "DD-" day prefix, then HH:MM:SS / MM:SS(.cc).
+        var days = 0.0
+        var rest = out
+        if let dash = out.firstIndex(of: "-"), let d = Double(out[out.startIndex..<dash]) {
+            days = d
+            rest = String(out[out.index(after: dash)...])
+        }
+        let parts = rest.split(separator: ":").map { Double($0) ?? 0 }
+        guard !parts.isEmpty else { return nil }
+        var secs = 0.0
+        for p in parts { secs = secs * 60 + p }   // ...:MM:SS folds left-to-right
+        return days * 86_400 + secs
     }
 
     /// `contents of <loopVar>` returns a tab *reference*, not text, so the tab

@@ -193,13 +193,16 @@ enum Diagnostics {
         print("\n결과: \(passes) PASS / \(2 - passes) FAIL")
     }
 
-    /// Prints the screen-derived idle/busy state for a tty (verifies the
-    /// detector against a real session). Usage: `ClaudeDeck --screen <tty>`.
+    /// Prints the screen-derived idle/busy state for a tty plus both underlying
+    /// signals (screen markers + process CPU). Resolves the real live process so
+    /// the CPU cross-check has a valid pid. Usage: `ClaudeDeck --screen <tty>`.
     static func screenProbe(tty: String) {
-        let proc = LiveProcess(id: 0, tty: tty, cwd: nil,
-                               termProgram: "Apple_Terminal", termSessionId: nil)
+        let live = ProcessProbe.liveProcesses().first { $0.tty == tty }
+        let proc = live ?? LiveProcess(id: 0, tty: tty, cwd: nil,
+                                       termProgram: "Apple_Terminal", termSessionId: nil)
+        let cpu = proc.pid > 0 ? TerminalActivator.processBurningCPU(proc.pid) : false
         let state = TerminalActivator.claudeScreenState(proc)
-        print("screen \(tty): \(state)")
+        print("screen \(tty): \(state)  (pid=\(proc.pid), cpu_busy=\(cpu))")
     }
 
     /// Drives the REAL screen-driven queue against a REAL live Claude session:
