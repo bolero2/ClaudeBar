@@ -20,6 +20,9 @@ enum Diagnostics {
         let peakLive = liveSessions.compactMap { $0.contextFraction }.max() ?? 0
         let warn = peakLive >= SessionContext.warningFraction
         print("\n● 세션: 총 \(sessions.count), 실행 중 \(liveSessions.count) | 라이브 최대 컨텍스트 \(Int(peakLive*100))% | 경고=\(warn)")
+        let detailed = sessions.prefix(SessionScanner.detailLimit)
+        let resumeOK = detailed.filter { ClaudePaths.encodeCwd($0.cwd) == $0.projectDirName }.count
+        print("  resume cwd 정합성: \(resumeOK)/\(detailed.count) (encode(cwd)==projectDir)")
         for s in sessions.prefix(8) {
             let ctx: String
             if let t = s.contextTokens, let f = s.contextFraction {
