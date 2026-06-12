@@ -109,6 +109,23 @@ struct UsageWindow: Identifiable {
     }
 }
 
+// MARK: - Official rate-limit usage (/api/oauth/usage)
+
+/// One rate-limit window from Claude's `/usage`: percent used + reset time.
+struct RateWindow: Identifiable {
+    let id: String
+    let title: String
+    let utilization: Double   // 0...100 percent used
+    let resetsAt: Date?
+
+    var remaining: Double { max(0, 100 - utilization) }
+}
+
+struct RateLimitUsage {
+    var windows: [RateWindow]
+    var extraUsageEnabled: Bool
+}
+
 // MARK: - MCP
 
 enum MCPScope: String {
