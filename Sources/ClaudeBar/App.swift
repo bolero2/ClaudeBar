@@ -9,6 +9,14 @@ enum Main {
             Diagnostics.run()
             return
         }
+        if args.contains("--notify-test") {
+            NotificationService.requestAuthorization()
+            Thread.sleep(forTimeInterval: 2)
+            NotificationService.post(title: "Claude Bar", body: "알림이 정상 동작합니다 ✅")
+            Thread.sleep(forTimeInterval: 2)
+            print("notify available=\(NotificationService.available)")
+            return
+        }
         if args.contains("--ratelimit") {
             let sem = DispatchSemaphore(value: 0)
             Task.detached {
@@ -82,6 +90,7 @@ struct ClaudeBarApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        NotificationService.requestAuthorization()
         // Start loading immediately so the popover has data on first open.
         AppState.shared.start()
     }

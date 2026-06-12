@@ -87,6 +87,7 @@ final class AppState: ObservableObject {
                 self.account = account
                 self.lastRefresh = Date()
                 self.isRefreshing = false
+                self.evaluateSessionNotifications(sessions)
             }
         }
     }
@@ -118,8 +119,96 @@ final class AppState: ObservableObject {
         Task.detached(priority: .utility) {
             let result = await OfficialUsageService.fetch()
             await MainActor.run {
-                if let result { self.rateLimit = result }  // keep last good on failure
+                if let result {
+                    self.rateLimit = result   // keep last good on failure
+                    self.evaluateRateLimitNotifications(result)
+                }
                 self.rateLimitRunning = false
+            }
+        }
+    }
+
+    // MARK: - Notifications
+
+    private var sessionsPrimed = false
+    private var rateLimitPrimed = false
+    private var waitingSince: [String: Date] = [:]   // session id -> first seen waiting
+    private var waitNotified: [String: Bool] = [:]
+    private var contextNotified: [String: Bool] = [:]
+    private var rateNotified: [String: Bool] = [:]    // window id -> notified
+
+    private static let contextThreshold = SessionContext.warningFraction   // 0.80
+    private static let rateThreshold = 90.0
+    private static let waitDebounce: TimeInterval = 10
+
+    /// Notifies when a live session goes idle (awaiting input) or its context
+    /// crosses the warning threshold. The first pass only primes baseline state
+    /// so pre-existing conditions at launch don't fire.
+    private func evaluateSessionNotifications(_ sessions: [Session]) {
+        let live = sessions.filter { $0.live != nil }
+        let priming = !sessionsPrimed
+        sessionsPrimed = true
+
+        var liveIDs = Set<String>()
+        for s in live {
+            let id = s.id
+            liveIDs.insert(id)
+
+            // Awaiting input (live but idle, stable for a few seconds).
+            if s.status == .waiting {
+                let since = waitingSince[id] ?? Date()
+                waitingSince[id] = since
+                if priming {
+                    waitNotified[id] = true
+                } else if Date().timeIntervalSince(since) >= Self.waitDebounce,
+                          waitNotified[id] != true {
+                    NotificationService.post(
+                        title: "입력 대기 중",
+                        body: "\(s.folderName) 세션이 입력을 기다립니다.")
+                    waitNotified[id] = true
+                }
+            } else {
+                waitingSince[id] = nil
+                waitNotified[id] = false
+            }
+
+            // Context window threshold (crossing upward).
+            let frac = s.contextFraction ?? 0
+            if frac >= Self.contextThreshold {
+                if priming {
+                    contextNotified[id] = true
+                } else if contextNotified[id] != true {
+                    NotificationService.post(
+                        title: "컨텍스트 한도 임박",
+                        body: "\(s.folderName) 컨텍스트 \(Int(frac * 100))% · \(SessionContext.windowLabel(s.contextLimit))")
+                    contextNotified[id] = true
+                }
+            } else {
+                contextNotified[id] = false
+            }
+        }
+
+        // Drop state for sessions no longer live.
+        waitingSince = waitingSince.filter { liveIDs.contains($0.key) }
+        waitNotified = waitNotified.filter { liveIDs.contains($0.key) }
+        contextNotified = contextNotified.filter { liveIDs.contains($0.key) }
+    }
+
+    private func evaluateRateLimitNotifications(_ rate: RateLimitUsage) {
+        let priming = !rateLimitPrimed
+        rateLimitPrimed = true
+        for w in rate.windows {
+            if w.utilization >= Self.rateThreshold {
+                if priming {
+                    rateNotified[w.id] = true
+                } else if rateNotified[w.id] != true {
+                    NotificationService.post(
+                        title: "사용 한도 임박",
+                        body: "\(w.title) \(Int(w.utilization))% 사용 · 리셋 \(Format.resetIn(w.resetsAt))")
+                    rateNotified[w.id] = true
+                }
+            } else {
+                rateNotified[w.id] = false
             }
         }
     }
