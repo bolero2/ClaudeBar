@@ -43,6 +43,9 @@ enum Diagnostics {
         for w in usage.windows {
             print("  \(w.title): 합계 \(Format.tokens(w.totalTokens)) (입력 \(Format.tokens(w.inputTokens)), 출력 \(Format.tokens(w.outputTokens)), 캐시읽기 \(Format.tokens(w.cacheReadTokens)))")
         }
+        print(String(format: "  비용 추정: 오늘 $%.2f, %d일 $%.2f, 5h $%.2f, 7d $%.2f",
+                     usage.todayCost, UsageService.historyDays, usage.historyCost,
+                     usage.windows.first?.costUSD ?? 0, usage.windows.last?.costUSD ?? 0))
         let nonZero = usage.daily.filter { $0.tokens > 0 }.count
         let peak = usage.daily.max { $0.tokens < $1.tokens }
         print("  일별 히스토그램: \(usage.daily.count)일 (활동 \(nonZero)일), 오늘 \(Format.tokens(usage.todayTokens)), \(UsageService.historyDays)일합계 \(Format.tokens(usage.totalTokensHistory))")

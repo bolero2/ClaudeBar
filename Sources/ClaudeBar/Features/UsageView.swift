@@ -34,8 +34,8 @@ struct UsageView: View {
                     }
 
                     Text(state.rateLimit == nil
-                         ? "공식 사용 한도를 가져오지 못했습니다 · 아래는 로컬 토큰 집계"
-                         : "위는 공식 한도, 아래 토큰 수치는 로컬 트랜스크립트 기준 집계")
+                         ? "공식 사용 한도를 가져오지 못했습니다 · 아래는 로컬 집계"
+                         : "위는 공식 한도 · 아래 토큰/비용은 로컬 트랜스크립트 기반(비용은 API 단가 환산 추정)")
                         .font(.system(size: 10))
                         .foregroundStyle(.tertiary)
                         .padding(.horizontal, 8)
@@ -133,10 +133,11 @@ private struct DailyChartCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top) {
-                stat("오늘", Format.tokens(usage.todayTokens))
+                stat("오늘", Format.cost(usage.todayCost),
+                     "\(Format.tokens(usage.todayTokens)) 토큰")
                 Spacer()
-                stat("\(UsageService.historyDays)일 토큰", Format.tokens(usage.totalTokensHistory),
-                     align: .trailing)
+                stat("\(UsageService.historyDays)일", Format.cost(usage.historyCost),
+                     "\(Format.tokens(usage.totalTokensHistory)) 토큰", align: .trailing)
             }
 
             Chart(usage.daily) { day in
@@ -164,11 +165,12 @@ private struct DailyChartCard: View {
         .cornerRadius(8)
     }
 
-    private func stat(_ label: String, _ value: String,
+    private func stat(_ label: String, _ value: String, _ sub: String,
                       align: HorizontalAlignment = .leading) -> some View {
         VStack(alignment: align, spacing: 1) {
             Text(label).font(.system(size: 9)).foregroundStyle(.secondary)
-            Text(value).font(.system(size: 15, weight: .bold))
+            Text(value).font(.system(size: 17, weight: .bold))
+            Text(sub).font(.system(size: 9)).foregroundStyle(.secondary)
         }
     }
 }
@@ -183,6 +185,11 @@ private struct UsageCard: View {
                 Text(window.title)
                     .font(.system(size: 12, weight: .semibold))
                 Spacer()
+                if window.costUSD > 0 {
+                    Text(Format.cost(window.costUSD))
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
                 Text(Format.tokens(window.totalTokens))
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(Color.claudeCoral)

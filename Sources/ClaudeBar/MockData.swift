@@ -81,10 +81,10 @@ enum MockData {
         let windows = [
             UsageWindow(id: "5h", title: "최근 5시간", inputTokens: 248_000,
                         outputTokens: 812_000, cacheReadTokens: 64_300_000,
-                        cacheCreationTokens: 1_900_000, costUSD: 0),
+                        cacheCreationTokens: 1_900_000, costUSD: 4.20),
             UsageWindow(id: "7d", title: "최근 7일", inputTokens: 1_200_000,
                         outputTokens: 3_800_000, cacheReadTokens: 1_540_000_000,
-                        cacheCreationTokens: 18_000_000, costUSD: 0)
+                        cacheCreationTokens: 18_000_000, costUSD: 38.91)
         ]
         var models: [String: ModelTokenSum] = [:]
         models["claude-opus-4-8"] = ModelTokenSum(
@@ -103,6 +103,8 @@ enum MockData {
             lifetimeByModel: models,
             totalTokensHistory: daily.reduce(0) { $0 + $1.tokens },
             todayTokens: daily.last?.tokens ?? 0,
+            todayCost: 4.20,
+            historyCost: 247.63,
             topModel: "claude-opus-4-8",
             officialAvailable: false)
     }

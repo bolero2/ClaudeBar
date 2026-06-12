@@ -24,6 +24,8 @@ enum UsageService {
         var lifetimeByModel: [String: ModelTokenSum]
         var totalTokensHistory: Int
         var todayTokens: Int
+        var todayCost: Double
+        var historyCost: Double
         var topModel: String?
         var officialAvailable: Bool
     }
@@ -32,9 +34,10 @@ enum UsageService {
 
     private struct FileStats {
         var mtime: Date
-        var daily: [String: Int]               // "YYYY-MM-DD" (UTC) -> tokens
+        var daily: [String: Int]               // local "YYYY-MM-DD" -> tokens
+        var dailyCost: [String: Double]        // local "YYYY-MM-DD" -> est. cost
         var models: [String: Int]
-        var recent: [(ts: String, tok: ModelTokenSum)]  // ts = 19-char prefix
+        var recent: [(ts: String, tok: ModelTokenSum, cost: Double)]  // ts = 19-char prefix
     }
 
     /// Single-flight (one usage task at a time), so a plain dictionary is safe.
@@ -60,9 +63,12 @@ enum UsageService {
 
         var liveKeys = Set<String>()
         var dailyTotals: [String: Int] = [:]
+        var dailyCostTotals: [String: Double] = [:]
         var modelTotals: [String: Int] = [:]
         var win5 = ModelTokenSum()
         var win7 = ModelTokenSum()
+        var win5Cost = 0.0
+        var win7Cost = 0.0
 
         for dir in projectDirs {
             let files = (try? fm.contentsOfDirectory(
@@ -88,16 +94,25 @@ enum UsageService {
                 for (day, n) in stats.daily where day >= historyStartDay {
                     dailyTotals[day, default: 0] += n
                 }
+                for (day, c) in stats.dailyCost where day >= historyStartDay {
+                    dailyCostTotals[day, default: 0] += c
+                }
                 for (model, n) in stats.models { modelTotals[model, default: 0] += n }
                 for entry in stats.recent where entry.ts >= sevenDaysAgo {
                     win7.add(entry.tok)
-                    if entry.ts >= fiveHoursAgo { win5.add(entry.tok) }
+                    win7Cost += entry.cost
+                    if entry.ts >= fiveHoursAgo {
+                        win5.add(entry.tok)
+                        win5Cost += entry.cost
+                    }
                 }
             }
         }
 
         cache = cache.filter { liveKeys.contains($0.key) }
 
+        win5.costUSD = win5Cost
+        win7.costUSD = win7Cost
         let windows = [
             makeWindow(id: "5h", title: "최근 5시간", sum: win5),
             makeWindow(id: "7d", title: "최근 7일", sum: win7)
@@ -113,6 +128,8 @@ enum UsageService {
             lifetimeByModel: lifetime,
             totalTokensHistory: daily.reduce(0) { $0 + $1.tokens },
             todayTokens: dailyTotals[todayKey] ?? 0,
+            todayCost: dailyCostTotals[todayKey] ?? 0,
+            historyCost: dailyCostTotals.values.reduce(0, +),
             topModel: modelTotals.max { $0.value < $1.value }?.key,
             officialAvailable: officialUsage() != nil
         )
@@ -131,7 +148,7 @@ enum UsageService {
 
     private static func parse(file: URL, mtime: Date, recentCutoff: String,
                               offsetSeconds: Int) -> FileStats {
-        var stats = FileStats(mtime: mtime, daily: [:], models: [:], recent: [])
+        var stats = FileStats(mtime: mtime, daily: [:], dailyCost: [:], models: [:], recent: [])
         guard let data = try? Data(contentsOf: file) else { return stats }
 
         data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
@@ -176,12 +193,18 @@ enum UsageService {
 
         stats.daily[dayKey, default: 0] += total
 
+        var model = ""
         if let mPos = find(b, pModel, lo, hi) {
             let mStart = mPos + pModel.count
             if let mEnd = findByte(b, 0x22, mStart, hi) {
-                stats.models[ascii(b, mStart, mEnd), default: 0] += total
+                model = ascii(b, mStart, mEnd)
+                stats.models[model, default: 0] += total
             }
         }
+
+        let cost = Pricing.cost(model: model, input: input, output: output,
+                                cacheRead: cacheRead, cacheWrite: cacheCreate)
+        stats.dailyCost[dayKey, default: 0] += cost
 
         if tsPrefix >= recentCutoff {
             var tok = ModelTokenSum()
@@ -189,7 +212,7 @@ enum UsageService {
             tok.outputTokens = output
             tok.cacheReadTokens = cacheRead
             tok.cacheCreationTokens = cacheCreate
-            stats.recent.append((tsPrefix, tok))
+            stats.recent.append((tsPrefix, tok, cost))
         }
     }
 
