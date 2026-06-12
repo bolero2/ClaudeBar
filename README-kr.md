@@ -126,10 +126,29 @@ MCP 토글(`~/.claude.json` 수정)과 인증 사용량 조회를 제외하면 *
 | --- | --- |
 | 세션 목록 · 위치 · 모델 | `~/.claude/projects/<dir>/<sessionId>.jsonl` (폴더명 + JSONL tail) |
 | 실행 상태 · 터미널 점프 | `ps` / `lsof`로 라이브 `claude` 프로세스 탐지 → tty 매칭 AppleScript |
-| 세션별 컨텍스트 한도 | JSONL `usage`(input/cache/output) + `~/.claude.json`의 `[1m]` 모델 기록 |
+| 세션별 컨텍스트 한도 | JSONL `usage`(input/cache/output) + `~/.claude.json`의 `[1m]` 모델 기록; **라이브** 세션은 statusLine 캐시(아래) |
 | 로컬 사용량 (5h · 7d · 일별) | JSONL `usage` 레코드 시간창 집계 (바이트 파서 + mtime 캐시) |
 | 공식 사용 한도 | `GET https://api.anthropic.com/api/oauth/usage` + Keychain OAuth 토큰 |
 | MCP · 계정 | `~/.claude.json` (`mcpServers`, `projects[]`, `oauthAccount`) |
+
+### 🧠 라이브 세션 컨텍스트 (Claude Code 2.1+)
+
+Claude Code 2.1.x는 **실행 중** 세션의 transcript를 `~/.claude/projects/<id>.jsonl`에 점진적으로 안 쓰고(깨끗한 종료 시에만 flush) → ClaudeDeck이 라이브 세션의 컨텍스트/모델을 디스크에서 못 읽습니다. 대신 Claude Code가 그 데이터를 **statusLine** 명령에 넘겨주므로, ClaudeDeck은 그걸 캐시하는 작은 헬퍼를 제공합니다. 종료된 세션은 기존대로 JSONL을 쓰니 설정 불필요.
+
+1회 설정:
+
+```bash
+cp scripts/claudedeck-statusline.sh ~/.claude/claudedeck-statusline.sh
+```
+
+`~/.claude/settings.json`의 `statusLine`을 헬퍼로 지정 — 기존 statusline 스크립트를 첫 인자로 넘기면 그대로 보존됩니다(생략하면 기본 한 줄):
+
+```json
+{ "statusLine": { "type": "command",
+    "command": "bash ~/.claude/claudedeck-statusline.sh ~/.claude/statusline-command.sh" } }
+```
+
+헬퍼는 `~/.claude/claudedeck/status/`에 세션별 캐시(컨텍스트 토큰·한도·모델)만 **쓰고**, ClaudeDeck은 **읽기만** 합니다. `jq` 필요. Claude Code가 `settings.json`을 핫리로드해서 실행 중 세션도 재시작 없이 반영됩니다.
 
 ### 개인정보 / 보안
 

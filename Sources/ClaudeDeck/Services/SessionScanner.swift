@@ -77,7 +77,22 @@ enum SessionScanner {
         }
 
         attachLiveProcesses(&sessions)
+        overlayLiveContext(&sessions)
         return sessions
+    }
+
+    /// Fills context/model for live sessions from the statusLine cache. On Claude
+    /// Code 2.1.x a running session's transcript isn't on disk yet, so the JSONL
+    /// tail yields no `usage` — but `claudedeck-statusline.sh` caches the live
+    /// figures. Only applied to live sessions still missing context, so the
+    /// transcript stays the source of truth whenever it's available.
+    private static func overlayLiveContext(_ sessions: inout [Session]) {
+        for i in sessions.indices where sessions[i].live != nil && sessions[i].contextTokens == nil {
+            guard let e = StatusCache.entry(for: sessions[i].id) else { continue }
+            sessions[i].contextTokens = e.contextTokens
+            sessions[i].contextLimit = e.contextLimit
+            if sessions[i].model == nil { sessions[i].model = e.model }
+        }
     }
 
     /// Removes a trailing `[1m]` marker so the base model id can be matched

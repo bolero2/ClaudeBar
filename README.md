@@ -126,10 +126,29 @@ Strictly **read-only**, except for MCP toggles (which edit `~/.claude.json`) and
 | --- | --- |
 | Sessions · location · model | `~/.claude/projects/<dir>/<sessionId>.jsonl` (folder name + JSONL tail) |
 | Run status · terminal jump | `ps` / `lsof` to find live `claude` processes → tty-matching AppleScript |
-| Per-session context window | JSONL `usage` (input/cache/output) + the `[1m]` model record in `~/.claude.json` |
+| Per-session context window | JSONL `usage` (input/cache/output) + the `[1m]` model record in `~/.claude.json`; for **live** sessions, the statusLine cache (see below) |
 | Local usage (5h · 7d · daily) | JSONL `usage` records bucketed by time window (byte-level parser + mtime cache) |
 | Official rate limits | `GET https://api.anthropic.com/api/oauth/usage` with the Keychain OAuth token |
 | MCP · account | `~/.claude.json` (`mcpServers`, `projects[]`, `oauthAccount`) |
+
+### 🧠 Live-session context (Claude Code 2.1+)
+
+Claude Code 2.1.x stopped writing a **running** session's transcript to `~/.claude/projects/<id>.jsonl` incrementally (it only flushes on clean exit), so ClaudeDeck can't read a live session's context/model from disk. Claude Code does pass that data to the **statusLine** command, so ClaudeDeck ships a tiny helper that caches it for the app to read. Ended sessions still use the JSONL directly and need no setup.
+
+One-time setup:
+
+```bash
+cp scripts/claudedeck-statusline.sh ~/.claude/claudedeck-statusline.sh
+```
+
+Then point `statusLine` at it in `~/.claude/settings.json` — pass your existing statusline script as the first argument to keep it (omit to use a minimal default):
+
+```json
+{ "statusLine": { "type": "command",
+    "command": "bash ~/.claude/claudedeck-statusline.sh ~/.claude/statusline-command.sh" } }
+```
+
+The helper only **writes** a small per-session cache under `~/.claude/claudedeck/status/` (context tokens, limit, model); ClaudeDeck only reads it. Requires `jq`. Claude Code hot-reloads `settings.json`, so live sessions pick it up without a restart.
 
 ### Privacy & security
 
