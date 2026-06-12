@@ -13,6 +13,7 @@ final class AppState: ObservableObject {
 
     @Published var sessions: [Session] = []
     @Published var usage: UsageService.Snapshot?
+    @Published var rateLimit: RateLimitUsage?
     @Published var globalMCP: [MCPServerInfo] = []
     @Published var projectMCP: [MCPServerInfo] = []
     @Published var account: Account?
@@ -48,16 +49,21 @@ final class AppState: ObservableObject {
         started = true
         refreshSessions()
         refreshUsage()
+        refreshRateLimit()
         sessionTimer = Timer.publish(every: sessionInterval, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in self?.refreshSessions() }
         usageTimer = Timer.publish(every: usageInterval, on: .main, in: .common)
             .autoconnect()
-            .sink { [weak self] _ in self?.refreshUsage() }
+            .sink { [weak self] _ in
+                self?.refreshUsage()
+                self?.refreshRateLimit()
+            }
     }
 
     /// Manual refresh: both cadences at once.
     func refresh() {
+        refreshRateLimit()
         refreshSessions()
         refreshUsage()
     }
@@ -98,6 +104,22 @@ final class AppState: ObservableObject {
             await MainActor.run {
                 self.usage = usage
                 self.usageRunning = false
+            }
+        }
+    }
+
+    // MARK: - Official rate-limit usage
+
+    private var rateLimitRunning = false
+
+    func refreshRateLimit() {
+        guard !rateLimitRunning else { return }
+        rateLimitRunning = true
+        Task.detached(priority: .utility) {
+            let result = await OfficialUsageService.fetch()
+            await MainActor.run {
+                if let result { self.rateLimit = result }  // keep last good on failure
+                self.rateLimitRunning = false
             }
         }
     }

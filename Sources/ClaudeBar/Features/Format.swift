@@ -34,6 +34,19 @@ enum Format {
         relative.localizedString(for: date, relativeTo: Date())
     }
 
+    /// Compact "time until reset": "45분 후", "7시간 12분 후", "2일 후".
+    static func resetIn(_ date: Date?) -> String {
+        guard let date else { return "—" }
+        let secs = Int(date.timeIntervalSinceNow)
+        if secs <= 0 { return "곧 리셋" }
+        let days = secs / 86_400
+        let hours = (secs % 86_400) / 3600
+        let mins = (secs % 3600) / 60
+        if days >= 1 { return hours > 0 ? "\(days)일 \(hours)시간 후" : "\(days)일 후" }
+        if hours >= 1 { return mins > 0 ? "\(hours)시간 \(mins)분 후" : "\(hours)시간 후" }
+        return "\(mins)분 후"
+    }
+
     /// Strips the long date suffix from model ids: "claude-opus-4-8" stays,
     /// "claude-haiku-4-5-20251001" -> "claude-haiku-4-5".
     static func model(_ id: String?) -> String {
