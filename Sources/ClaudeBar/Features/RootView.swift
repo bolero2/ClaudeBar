@@ -27,6 +27,7 @@ enum Tab: String, CaseIterable, Identifiable {
 
 struct RootView: View {
     @EnvironmentObject var state: AppState
+    @ObservedObject private var settings = AppSettings.shared
     @State private var tab: Tab
 
     init(initialTab: Tab = .sessions) {
@@ -55,6 +56,7 @@ struct RootView: View {
             footer
         }
         .frame(width: 380, height: 500)
+        .id(settings.language)   // rebuild whole tree when language changes
     }
 
     private var header: some View {

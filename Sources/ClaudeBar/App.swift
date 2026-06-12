@@ -1,5 +1,7 @@
 import SwiftUI
 import AppKit
+import Combine
+import UserNotifications
 
 @main
 enum Main {
@@ -75,34 +77,92 @@ enum Main {
 
 struct ClaudeBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @StateObject private var state = AppState.shared
-    @ObservedObject private var settings = AppSettings.shared
-
     var body: some Scene {
-        MenuBarExtra {
-            RootView()
-                .environmentObject(state)
-                .onAppear { state.refresh() }   // freshen on each open
-                .id(settings.language)          // rebuild on language change
-        } label: {
-            // Sparkle + live-session count. Switches to a warning triangle when
-            // a live session's context crosses the threshold.
-            Image(systemName: state.contextWarning ? "exclamationmark.triangle.fill" : "sparkle")
-                .foregroundStyle(state.contextWarning ? Color.orange : Color.primary)
-            if state.liveSessionCount > 0 {
-                Text("\(state.liveSessionCount)")
-            }
-        }
-        .menuBarExtraStyle(.window)
+        // The UI lives in a status-item popover managed by AppDelegate; this
+        // empty Settings scene just satisfies the SwiftUI App lifecycle.
+        Settings { EmptyView() }
     }
 }
 
-/// Hides the Dock icon so the app lives purely in the menu bar.
-final class AppDelegate: NSObject, NSApplicationDelegate {
+/// Owns the menu-bar status item + popover, the global hotkey, and notification
+/// click handling. The app is a pure menu-bar agent (no Dock icon).
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
+    private var statusItem: NSStatusItem!
+    private let popover = NSPopover()
+    private var hotKey: HotKeyManager?
+    private var cancellables = Set<AnyCancellable>()
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        UNUserNotificationCenter.current().delegate = self
         NotificationService.requestAuthorization()
-        // Start loading immediately so the popover has data on first open.
         AppState.shared.start()
+
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        statusItem.button?.target = self
+        statusItem.button?.action = #selector(togglePopover)
+        updateStatusButton()
+
+        popover.behavior = .transient
+        popover.contentSize = NSSize(width: 380, height: 500)
+        popover.contentViewController = NSHostingController(
+            rootView: RootView().environmentObject(AppState.shared))
+
+        // Keep the menu-bar button in sync with live count / warning state.
+        AppState.shared.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] in Task { @MainActor in self?.updateStatusButton() } }
+            .store(in: &cancellables)
+
+        // ⌥⌘C toggles the panel from anywhere.
+        hotKey = HotKeyManager { [weak self] in
+            Task { @MainActor in self?.togglePopover() }
+        }
+    }
+
+    private func updateStatusButton() {
+        guard let button = statusItem.button else { return }
+        let s = AppState.shared
+        let symbol = s.contextWarning ? "exclamationmark.triangle.fill" : "sparkle"
+        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Claude Bar")
+        image?.isTemplate = !s.contextWarning
+        button.image = image
+        button.imagePosition = .imageLeading
+        button.title = s.liveSessionCount > 0 ? " \(s.liveSessionCount)" : ""
+        button.contentTintColor = s.contextWarning ? .systemOrange : nil
+    }
+
+    @objc private func togglePopover() {
+        guard let button = statusItem.button else { return }
+        if popover.isShown {
+            popover.performClose(nil)
+        } else {
+            AppState.shared.refresh()
+            NSApp.activate(ignoringOtherApps: true)
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            popover.contentViewController?.view.window?.makeKey()
+        }
+    }
+
+    // MARK: - Notification clicks
+
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            didReceive response: UNNotificationResponse,
+                                            withCompletionHandler completionHandler: @escaping () -> Void) {
+        let sid = response.notification.request.content.userInfo["sessionId"] as? String
+        Task { @MainActor [weak self] in
+            if let sid { AppState.shared.activateById(sid) }
+            else { self?.togglePopover() }
+        }
+        completionHandler()
+    }
+
+    /// Show notifications even when the app is frontmost.
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            willPresent notification: UNNotification,
+                                            withCompletionHandler completionHandler:
+                                            @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .sound])
     }
 }

@@ -166,7 +166,8 @@ final class AppState: ObservableObject {
                     if settings.notifyWaiting {
                         NotificationService.post(
                             title: L("입력 대기 중"),
-                            body: "\(s.folderName) \(L("세션이 입력을 기다립니다."))")
+                            body: "\(s.folderName) \(L("세션이 입력을 기다립니다."))",
+                            sessionId: s.id)
                     }
                     waitNotified[id] = true
                 }
@@ -184,7 +185,8 @@ final class AppState: ObservableObject {
                     if settings.notifyContext {
                         NotificationService.post(
                             title: L("컨텍스트 한도 임박"),
-                            body: "\(s.folderName) \(L("컨텍스트")) \(Int(frac * 100))% · \(SessionContext.windowLabel(s.contextLimit))")
+                            body: "\(s.folderName) \(L("컨텍스트")) \(Int(frac * 100))% · \(SessionContext.windowLabel(s.contextLimit))",
+                            sessionId: s.id)
                     }
                     contextNotified[id] = true
                 }
@@ -255,6 +257,11 @@ final class AppState: ObservableObject {
                 _ = TerminalActivator.openResume(cwd: cwd, sessionId: id)
             }
         }
+    }
+
+    /// Activates the session with the given id (jump to terminal / resume).
+    func activateById(_ id: String) {
+        if let s = sessions.first(where: { $0.id == id }) { activate(s) }
     }
 
     /// Opens a new terminal window and starts `claude` in the given directory.
