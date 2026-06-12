@@ -106,6 +106,20 @@ enum MockData {
             todayTokens: daily.last?.tokens ?? 0,
             todayCost: 4.20,
             historyCost: 247.63,
+            projectCost7d: [
+                "-Users-dev-work-web-dashboard": 38.91,
+                "-Users-dev-work-api-gateway": 12.40,
+                "-Users-dev-work-ml-pipeline": 6.02,
+                "-Users-dev-work-mobile-app": 4.80,
+                "-Users-dev-work-docs-site": 1.20
+            ],
+            projectTokens7d: [
+                "-Users-dev-work-web-dashboard": 612_000_000,
+                "-Users-dev-work-api-gateway": 188_000_000,
+                "-Users-dev-work-ml-pipeline": 96_000_000,
+                "-Users-dev-work-mobile-app": 72_000_000,
+                "-Users-dev-work-docs-site": 14_000_000
+            ],
             topModel: "claude-opus-4-8",
             officialAvailable: false)
     }

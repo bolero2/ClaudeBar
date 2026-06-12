@@ -143,4 +143,6 @@ struct ModelTokenSum {
     var cacheReadTokens = 0
     var cacheCreationTokens = 0
     var costUSD = 0.0
+
+    var total: Int { inputTokens + outputTokens + cacheReadTokens + cacheCreationTokens }
 }

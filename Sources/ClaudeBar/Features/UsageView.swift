@@ -5,6 +5,18 @@ struct UsageView: View {
     @EnvironmentObject var state: AppState
     var scroll = true
 
+    /// Project display name from a matching session, else decoded folder name.
+    private func projectName(_ dir: String) -> String {
+        if let s = state.sessions.first(where: { $0.projectDirName == dir }) {
+            return s.folderName
+        }
+        return (ClaudePaths.decodeProjectDirName(dir) as NSString).lastPathComponent
+    }
+
+    private func activeCount(_ dir: String) -> Int {
+        state.sessions.filter { $0.projectDirName == dir && $0.live != nil }.count
+    }
+
     var body: some View {
         if scroll {
             ScrollView { content }
@@ -25,6 +37,19 @@ struct UsageView: View {
                     }
 
                     DailyChartCard(usage: usage)
+
+                    let projects = usage.projectCost7d
+                        .sorted { $0.value > $1.value }.prefix(8)
+                    if !projects.isEmpty {
+                        SectionHeader(title: "프로젝트별 (7일)", count: nil)
+                        ForEach(Array(projects), id: \.key) { dir, cost in
+                            ProjectUsageRow(
+                                name: projectName(dir),
+                                activeCount: activeCount(dir),
+                                tokens: usage.projectTokens7d[dir] ?? 0,
+                                cost: cost)
+                        }
+                    }
 
                     if !usage.lifetimeByModel.isEmpty {
                         SectionHeader(title: "모델별 누적", count: nil)
@@ -212,6 +237,39 @@ private struct UsageCard: View {
             Text(label).font(.system(size: 9)).foregroundStyle(.secondary)
             Text(Format.tokens(n)).font(.system(size: 11, weight: .medium))
         }
+    }
+}
+
+private struct ProjectUsageRow: View {
+    let name: String
+    let activeCount: Int
+    let tokens: Int
+    let cost: Double
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(name)
+                .font(.system(size: 11, weight: .medium))
+                .lineLimit(1)
+            if activeCount > 0 {
+                Text("\(activeCount)")
+                    .font(.system(size: 9, weight: .bold))
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+                    .background(Color.green.opacity(0.2))
+                    .clipShape(Capsule())
+            }
+            Spacer()
+            Text(Format.tokens(tokens))
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+            Text(Format.cost(cost))
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(Color.claudeCoral)
+                .frame(width: 52, alignment: .trailing)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
     }
 }
 

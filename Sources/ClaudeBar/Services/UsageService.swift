@@ -26,6 +26,8 @@ enum UsageService {
         var todayTokens: Int
         var todayCost: Double
         var historyCost: Double
+        var projectCost7d: [String: Double]   // projectDirName -> 7-day cost
+        var projectTokens7d: [String: Int]    // projectDirName -> 7-day tokens
         var topModel: String?
         var officialAvailable: Bool
     }
@@ -69,8 +71,11 @@ enum UsageService {
         var win7 = ModelTokenSum()
         var win5Cost = 0.0
         var win7Cost = 0.0
+        var projCost7d: [String: Double] = [:]
+        var projTokens7d: [String: Int] = [:]
 
         for dir in projectDirs {
+            let dirName = dir.lastPathComponent   // projectDirName
             let files = (try? fm.contentsOfDirectory(
                 at: dir,
                 includingPropertiesForKeys: [.contentModificationDateKey],
@@ -101,6 +106,8 @@ enum UsageService {
                 for entry in stats.recent where entry.ts >= sevenDaysAgo {
                     win7.add(entry.tok)
                     win7Cost += entry.cost
+                    projCost7d[dirName, default: 0] += entry.cost
+                    projTokens7d[dirName, default: 0] += entry.tok.total
                     if entry.ts >= fiveHoursAgo {
                         win5.add(entry.tok)
                         win5Cost += entry.cost
@@ -130,6 +137,8 @@ enum UsageService {
             todayTokens: dailyTotals[todayKey] ?? 0,
             todayCost: dailyCostTotals[todayKey] ?? 0,
             historyCost: dailyCostTotals.values.reduce(0, +),
+            projectCost7d: projCost7d,
+            projectTokens7d: projTokens7d,
             topModel: modelTotals.max { $0.value < $1.value }?.key,
             officialAvailable: officialUsage() != nil
         )
