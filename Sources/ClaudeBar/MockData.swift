@@ -8,6 +8,7 @@ enum MockData {
         let s = AppState()
         s.sessions = sessions()
         s.usage = usage()
+        s.rateLimit = rateLimit()
         s.globalMCP = globalMCP()
         s.projectMCP = projectMCP()
         s.account = account()
@@ -53,6 +54,17 @@ enum MockData {
             session("infra", branch: "main", model: "claude-sonnet-4-6",
                     ctx: 61_000, limit: 200_000, status: .inactive, live: false, agoSec: 172_800)
         ]
+    }
+
+    private static func rateLimit() -> RateLimitUsage {
+        RateLimitUsage(windows: [
+            RateWindow(id: "5h", title: "5시간 세션", utilization: 42,
+                       resetsAt: Date().addingTimeInterval(2 * 3600 + 35 * 60)),
+            RateWindow(id: "7d", title: "7일 (전체)", utilization: 18,
+                       resetsAt: Date().addingTimeInterval(2 * 86_400 + 5 * 3600)),
+            RateWindow(id: "7ds", title: "7일 (Sonnet)", utilization: 4,
+                       resetsAt: Date().addingTimeInterval(2 * 86_400 + 5 * 3600))
+        ], extraUsageEnabled: true)
     }
 
     private static func usage() -> UsageService.Snapshot {

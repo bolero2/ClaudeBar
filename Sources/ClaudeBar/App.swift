@@ -9,6 +9,22 @@ enum Main {
             Diagnostics.run()
             return
         }
+        if args.contains("--ratelimit") {
+            let sem = DispatchSemaphore(value: 0)
+            Task.detached {
+                if let r = await OfficialUsageService.fetch() {
+                    print("extra_usage=\(r.extraUsageEnabled)")
+                    for w in r.windows {
+                        print("  \(w.title): \(Int(w.utilization))% 사용, 리셋 \(Format.resetIn(w.resetsAt))")
+                    }
+                } else {
+                    print("rate-limit 가져오기 실패 (토큰/네트워크/엔드포인트)")
+                }
+                sem.signal()
+            }
+            sem.wait()
+            return
+        }
         // Debug: `--mcp global <name> <on|off>` or `--mcp project <name> <on|off> <path>`
         if let i = args.firstIndex(of: "--mcp"), i + 3 < args.count {
             let scope = args[i + 1], name = args[i + 2], enable = args[i + 3] == "on"
