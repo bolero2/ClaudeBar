@@ -34,7 +34,8 @@ When you run several Claude Code sessions across different terminals, Claude Bar
 - ⚡ **Click to jump / resume**
   - Click a **running** session → bring its **terminal tab to the front**.
   - Click an **ended** session → open a **new terminal window**, `cd` into its directory and `claude --resume` that exact session.
-- 🔔 **Notifications** — get notified when a session **finishes and is waiting for input**, or when a session's context (80%) or your usage limit (90%) is about to run out.
+- 🔔 **Notifications** — get notified when a session **finishes and is waiting for input**, or when a session's context (80%) or your usage limit (90%) is about to run out. Click a notification to jump straight to that session.
+- ⌨️ **Global hotkey** — `⌥⌘C` opens the panel from anywhere.
 - ⌨️ **Quick actions** — start a **new session** in a chosen directory (optionally with `--dangerously-skip-permissions`), **kill** a running session, or right-click for "reveal in Finder / copy path".
 - 📈 **Usage**
   - **Official rate limits** — the same data as Claude Code's `/usage`: 5-hour session, 7-day week (and Sonnet-only) **% used + time until reset**.
@@ -143,10 +144,10 @@ Sources/ClaudeBar/
 - [x] Notifications, live activity, cost tracking, quick actions
 - [x] Settings, search/filter/favorites, per-project breakdown
 - [x] Localization (English / 한국어), permission-mode badges
-- [ ] Global hotkey to open the panel (needs an NSStatusItem refactor)
-- [ ] OAuth token auto-refresh when expired
+- [x] Global hotkey (⌥⌘C), click-to-jump notifications
+- [x] OAuth token auto-refresh, configurable thresholds
+- [ ] macOS widget (needs an Xcode project + Developer signing for App Groups)
 - [ ] Multi-account switching
-- [ ] User-configurable thresholds
 
 ## 📄 License
 
