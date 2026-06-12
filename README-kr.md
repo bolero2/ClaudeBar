@@ -16,7 +16,7 @@
   <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow" />
 </p>
 
-<img src="docs/images/sessions.png" alt="Claude Bar — 세션" width="340" />
+<img src="docs/images/ko/sessions.png" alt="Claude Bar — 세션" width="340" />
 
 </div>
 
@@ -28,13 +28,14 @@
 
 - 🖥️ **세션 관리** — 실행 중 / 대기 / 종료 상태, 작업 위치(cwd), git 브랜치, 사용 모델을 한 목록에서.
 - 🔭 **실시간 활동** — 실행 중인 세션이 지금 뭐 하는지: 실행 중인 툴(`▶ Bash: npm test`) 또는 마지막 메시지.
+- 🔑 **권한 모드** — 세션별 현재 모드를 한눈에: `PLAN` / `ACCEPT`(편집 수락) / `BYPASS`(`--dangerously-skip-permissions`).
 - 🔍 **검색 · 필터 · 즐겨찾기** — 프로젝트 검색, 상태 필터(전체/실행 중/종료), 자주 쓰는 프로젝트 ★ 핀 고정.
 - 📊 **세션별 컨텍스트 한도** — 각 세션의 컨텍스트 사용량을 표시. `200K` / `1M` 윈도우를 자동 추론(설정의 `[1m]` 모델 기록 + 관측된 최대 컨텍스트).
 - ⚡ **클릭 → 점프 / 복구**
   - **실행 중** 세션 클릭 → 해당 **터미널 탭을 맨 앞으로**.
   - **종료된** 세션 클릭 → **새 터미널 창**에서 `cd` 후 `claude --resume`로 그 세션 복구.
 - 🔔 **알림** — 세션이 **작업을 끝내고 입력을 기다릴 때**, 또는 세션 컨텍스트(80%)·사용 한도(90%) 임박 시 알림.
-- ⌨️ **빠른 액션** — 디렉토리를 골라 **새 세션 시작**, 실행 중 세션 **종료(kill)**, 우클릭으로 "Finder에서 열기 / 경로 복사".
+- ⌨️ **빠른 액션** — 디렉토리를 골라 **새 세션 시작**(원하면 `--dangerously-skip-permissions`로), 실행 중 세션 **종료(kill)**, 우클릭으로 "Finder에서 열기 / 경로 복사".
 - 📈 **사용량**
   - **공식 사용 한도** — Claude Code `/usage`와 동일한 데이터: 5시간 세션, 7일(전체/Sonnet) **% 사용 + 리셋까지 남은 시간**.
   - **비용** — 오늘 / 7일 / 30일 추정 비용(토큰 × API 단가).
@@ -42,7 +43,7 @@
   - **로컬 토큰 집계** — 최근 5시간 / 7일 토큰 합계, **일별 히스토그램**(로컬 기준), 모델별 누적.
 - 🧩 **MCP** — 전역 및 프로젝트별 MCP 서버 목록과 **on/off 토글**(`~/.claude.json`을 안전하게 수정).
 - 👤 **계정** — 현재 연동된 Claude 계정(이메일·조직·역할).
-- ⚙️ **설정** — 알림 토글, 경고 임계치 조절, 사용할 터미널 선택, 로그인 시 자동 실행.
+- ⚙️ **설정** — **언어(English / 한국어)** 전환, 알림 토글, 경고 임계치 조절, 사용할 터미널 선택, 로그인 시 자동 실행.
 - 🎛️ **다듬은 UX** — 최근 세션은 기본 회색, 마우스 오버 시 컬러. 라이브 세션 컨텍스트가 높으면 메뉴바 아이콘이 경고로 전환.
 - 🔒 **로컬 전용** — 선택적 인증 사용량 조회 외에 네트워크 호출 없음. 그 외에는 `~/.claude` 파일만 읽습니다.
 
@@ -54,16 +55,16 @@
     <td align="center"><b>사용량</b></td>
   </tr>
   <tr>
-    <td><img src="docs/images/sessions.png" width="300" alt="세션" /></td>
-    <td><img src="docs/images/usage.png" width="300" alt="사용량" /></td>
+    <td><img src="docs/images/ko/sessions.png" width="300" alt="세션" /></td>
+    <td><img src="docs/images/ko/usage.png" width="300" alt="사용량" /></td>
   </tr>
   <tr>
     <td align="center"><b>MCP</b></td>
     <td align="center"><b>계정</b></td>
   </tr>
   <tr>
-    <td><img src="docs/images/mcp.png" width="300" alt="MCP" /></td>
-    <td><img src="docs/images/account.png" width="300" alt="계정" /></td>
+    <td><img src="docs/images/ko/mcp.png" width="300" alt="MCP" /></td>
+    <td><img src="docs/images/ko/account.png" width="300" alt="계정" /></td>
   </tr>
 </table>
 
@@ -141,6 +142,7 @@ Sources/ClaudeBar/
 - [x] MCP on/off 토글
 - [x] 알림 · 실시간 활동 · 비용 추적 · 빠른 액션
 - [x] 설정 · 검색/필터/즐겨찾기 · 프로젝트별 집계
+- [x] 현지화(English / 한국어) · 권한 모드 뱃지
 - [ ] 패널 여는 전역 단축키 (NSStatusItem 리팩터 필요)
 - [ ] OAuth 토큰 만료 시 자동 refresh
 - [ ] 멀티 계정 전환
