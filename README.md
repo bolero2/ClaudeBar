@@ -27,17 +27,20 @@ When you run several Claude Code sessions across different terminals, Claude Bar
 ## ✨ Features
 
 - 🖥️ **Session management** — running / waiting / ended status, working directory (cwd), git branch and model, all in one list.
+- 🔭 **Live activity** — each running session shows what it's doing right now: the tool it's invoking (`▶ Bash: npm test`) or its last message.
 - 📊 **Per-session context window** — each session shows how much of its context window is used, with the `200K` / `1M` window auto-detected (from the project's `[1m]` model record + the largest observed context).
 - ⚡ **Click to jump / resume**
   - Click a **running** session → bring its **terminal tab to the front**.
   - Click an **ended** session → open a **new terminal window**, `cd` into its directory and `claude --resume` that exact session.
+- 🔔 **Notifications** — get notified when a session **finishes and is waiting for input**, or when a session's context (80%) or your usage limit (90%) is about to run out.
+- ⌨️ **Quick actions** — start a **new session** in a chosen directory, **kill** a running session, or right-click for "reveal in Finder / copy path".
 - 📈 **Usage**
   - **Official rate limits** — the same data as Claude Code's `/usage`: 5-hour session, 7-day week (and Sonnet-only) **% used + time until reset**.
+  - **Cost** — estimated today / 7-day / 30-day spend (token counts × API rates).
   - **Local token aggregation** — last 5h / 7d token totals, a **daily histogram** (local day), and per-model lifetime totals.
 - 🧩 **MCP** — list global and per-project MCP servers and **toggle them on/off** (safely edits `~/.claude.json`).
 - 👤 **Account** — the currently linked Claude account (email, organization, role).
-- 🔔 **Context alert** — when a live session crosses 80% of its window, the menu bar icon turns into a warning.
-- 🎛️ **Polished UX** — recent sessions are muted to grayscale until you hover them.
+- 🎛️ **Polished UX** — recent sessions are muted to grayscale until you hover them; the menu bar icon turns into a warning when a live session's context runs high.
 - 🔒 **Local-only** — no network calls except the optional, authenticated usage lookup. Everything else reads files under `~/.claude`.
 
 ## 📸 Screenshots
@@ -133,9 +136,11 @@ Sources/ClaudeBar/
 
 - [x] Official `/usage` rate limits (5h · 7d) with reset times
 - [x] MCP on/off toggle
+- [x] Notifications, live activity, cost tracking, quick actions
+- [ ] Global hotkey to open the panel (needs an NSStatusItem refactor)
 - [ ] OAuth token auto-refresh when expired
 - [ ] Multi-account switching
-- [ ] User-configurable context warning threshold
+- [ ] User-configurable thresholds
 
 ## 📄 License
 
