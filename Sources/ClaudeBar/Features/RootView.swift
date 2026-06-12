@@ -74,6 +74,13 @@ struct RootView: View {
             }
             Spacer()
             Button {
+                state.newSessionInteractive()
+            } label: {
+                Image(systemName: "plus")
+            }
+            .buttonStyle(.plain)
+            .help("새 세션 시작 (디렉토리 선택)")
+            Button {
                 state.refresh()
             } label: {
                 Image(systemName: "arrow.clockwise")

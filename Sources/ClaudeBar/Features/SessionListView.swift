@@ -122,6 +122,17 @@ private struct SessionRow: View {
         .help(session.live != nil
               ? "클릭: 해당 터미널 탭을 앞으로"
               : "클릭: 새 터미널에서 이 세션 복구 (claude --resume)")
+        .contextMenu {
+            if session.live != nil {
+                Button("터미널 앞으로") { state.activate(session) }
+                Button("세션 종료 (kill)", role: .destructive) { state.killSession(session) }
+            } else {
+                Button("새 터미널에서 복구") { state.activate(session) }
+            }
+            Divider()
+            Button("Finder에서 열기") { state.revealInFinder(session.cwd) }
+            Button("경로 복사") { state.copyPath(session.cwd) }
+        }
     }
 
     private var rowBackground: Color {

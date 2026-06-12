@@ -41,14 +41,23 @@ enum TerminalActivator {
     /// `claude --resume <sessionId>` to restore an ended session.
     @discardableResult
     static func openResume(cwd: String, sessionId: String) -> Result {
-        let safeCwd = cwd.replacingOccurrences(of: "'", with: "'\\''")
-        let command = "cd '\(safeCwd)' && claude --resume \(sessionId)"
+        open("cd '\(escapeShell(cwd))' && claude --resume \(sessionId)")
+    }
 
+    /// Opens a new terminal window and starts a fresh `claude` session in `cwd`.
+    @discardableResult
+    static func openNew(cwd: String) -> Result {
+        open("cd '\(escapeShell(cwd))' && claude")
+    }
+
+    private static func escapeShell(_ s: String) -> String {
+        s.replacingOccurrences(of: "'", with: "'\\''")
+    }
+
+    private static func open(_ command: String) -> Result {
         switch preferredTerminal() {
-        case .iTerm:
-            return run(iTermOpenScript(command))
-        case .appleTerminal:
-            return run(appleTerminalOpenScript(command))
+        case .iTerm: return run(iTermOpenScript(command))
+        case .appleTerminal: return run(appleTerminalOpenScript(command))
         }
     }
 

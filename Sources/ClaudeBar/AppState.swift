@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import AppKit
 
 /// Central observable store.
 ///
@@ -247,5 +248,45 @@ final class AppState: ObservableObject {
                 _ = TerminalActivator.openResume(cwd: cwd, sessionId: id)
             }
         }
+    }
+
+    /// Opens a new terminal window and starts `claude` in the given directory.
+    func newSession(cwd: String) {
+        Task.detached(priority: .userInitiated) {
+            _ = TerminalActivator.openNew(cwd: cwd)
+        }
+    }
+
+    /// Prompts for a directory, then starts a new session there.
+    func newSessionInteractive() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "새 세션 시작"
+        panel.message = "Claude Code를 시작할 디렉토리를 선택하세요"
+        NSApp.activate(ignoringOtherApps: true)
+        if panel.runModal() == .OK, let url = panel.url {
+            newSession(cwd: url.path)
+        }
+    }
+
+    /// Sends SIGTERM to a live session's process.
+    func killSession(_ session: Session) {
+        guard let pid = session.live?.pid else { return }
+        Task.detached(priority: .userInitiated) {
+            kill(pid, SIGTERM)
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            await MainActor.run { self.refreshSessions() }
+        }
+    }
+
+    func revealInFinder(_ cwd: String) {
+        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: cwd)
+    }
+
+    func copyPath(_ cwd: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(cwd, forType: .string)
     }
 }
