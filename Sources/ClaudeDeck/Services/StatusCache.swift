@@ -35,10 +35,15 @@ enum StatusCache {
         }
     }
 
-    /// The cached entry for a session id, or nil if absent/stale/unreadable.
-    /// `maxAge` guards against using a frozen cache from a session that already
-    /// ended (the helper stops updating it once the session exits).
-    static func entry(for sessionId: String, maxAge: TimeInterval = 90) -> Entry? {
+    /// The cached entry for a session id, or nil if absent/unreadable.
+    ///
+    /// `maxAge` defaults to ~7 days, effectively unbounded: the statusLine stops
+    /// re-rendering while a session sits idle, so the cache ts freezes even though
+    /// the last context figure is still correct. The caller (`overlayLiveContext`)
+    /// already gates on a live process, which is what makes the entry current —
+    /// so we must NOT drop a frozen-but-valid cache for an idle live session.
+    /// Session ids are UUIDs (never reused), so a long window can't mismatch.
+    static func entry(for sessionId: String, maxAge: TimeInterval = 604_800) -> Entry? {
         let url = dir.appendingPathComponent(sessionId + ".json", isDirectory: false)
         guard let data = try? Data(contentsOf: url),
               let entry = try? JSONDecoder().decode(Entry.self, from: data),
