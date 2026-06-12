@@ -42,6 +42,10 @@ struct SessionListView: View {
 private struct SessionRow: View {
     @EnvironmentObject var state: AppState
     let session: Session
+    @State private var hovering = false
+
+    /// Recent (ended) rows are muted to grayscale until hovered.
+    private var muted: Bool { session.live == nil && !hovering }
 
     var body: some View {
         Button {
@@ -96,11 +100,20 @@ private struct SessionRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .background(session.live != nil ? Color.accentColor.opacity(0.08) : Color.clear)
+        .background(rowBackground)
         .cornerRadius(6)
+        .grayscale(muted ? 1.0 : 0.0)
+        .opacity(muted ? 0.55 : 1.0)
+        .onHover { hovering = $0 }
+        .animation(.easeInOut(duration: 0.15), value: hovering)
         .help(session.live != nil
               ? "클릭: 해당 터미널 탭을 앞으로"
               : "클릭: 새 터미널에서 이 세션 복구 (claude --resume)")
+    }
+
+    private var rowBackground: Color {
+        if session.live != nil { return Color.accentColor.opacity(0.08) }
+        return hovering ? Color.primary.opacity(0.06) : Color.clear
     }
 
     private var statusColor: Color {
