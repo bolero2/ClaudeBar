@@ -15,6 +15,10 @@ struct UsageView: View {
 
     private var content: some View {
             VStack(alignment: .leading, spacing: 10) {
+                if let rate = state.rateLimit, !rate.windows.isEmpty {
+                    RateLimitCard(rate: rate)
+                }
+
                 if let usage = state.usage {
                     ForEach(usage.windows) { window in
                         UsageCard(window: window)
@@ -29,13 +33,13 @@ struct UsageView: View {
                         }
                     }
 
-                    if !usage.officialAvailable {
-                        Text("로컬 트랜스크립트 기준 추정 · 공식 한도 연동은 준비 중")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.tertiary)
-                            .padding(.horizontal, 8)
-                            .padding(.top, 2)
-                    }
+                    Text(state.rateLimit == nil
+                         ? "공식 사용 한도를 가져오지 못했습니다 · 아래는 로컬 토큰 집계"
+                         : "위는 공식 한도, 아래 토큰 수치는 로컬 트랜스크립트 기준 집계")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 8)
+                        .padding(.top, 2)
                 } else {
                     VStack(spacing: 8) {
                         ProgressView()
@@ -49,6 +53,75 @@ struct UsageView: View {
                 }
             }
             .padding(8)
+    }
+}
+
+// MARK: - Official rate-limit
+
+private struct RateLimitCard: View {
+    let rate: RateLimitUsage
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: "gauge.with.dots.needle.50percent")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tint)
+                Text("사용 한도")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            ForEach(rate.windows) { window in
+                RateRow(window: window)
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.primary.opacity(0.04))
+        .cornerRadius(8)
+    }
+}
+
+private struct RateRow: View {
+    let window: RateWindow
+
+    private var fraction: Double { min(1, max(0, window.utilization / 100)) }
+    private var color: Color {
+        switch fraction {
+        case ..<0.6: return .green
+        case ..<0.85: return .orange
+        default: return .red
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack {
+                Text(window.title)
+                    .font(.system(size: 11, weight: .medium))
+                Spacer()
+                Text("\(Int(window.utilization))% 사용")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(color)
+                    .monospacedDigit()
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.primary.opacity(0.08))
+                    Capsule().fill(color).frame(width: max(3, geo.size.width * fraction))
+                }
+            }
+            .frame(height: 5)
+            HStack {
+                Text("\(Int(window.remaining))% 남음")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Label(Format.resetIn(window.resetsAt), systemImage: "arrow.clockwise")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary)
+                    .labelStyle(.titleAndIcon)
+            }
+        }
     }
 }
 
