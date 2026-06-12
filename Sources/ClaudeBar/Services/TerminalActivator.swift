@@ -83,15 +83,16 @@ enum TerminalActivator {
     }
 
     private static func appleTerminalScript(_ devTTY: String) -> String {
+        // `activate` must come AFTER reordering the window, otherwise Terminal
+        // just brings its current front window forward and the target stays put.
         """
         tell application "Terminal"
-          activate
           repeat with w in windows
             repeat with t in tabs of w
               if tty of t is "\(devTTY)" then
                 set selected of t to true
-                set frontmost of w to true
                 set index of w to 1
+                activate
                 return "ok"
               end if
             end repeat
@@ -125,13 +126,13 @@ enum TerminalActivator {
     private static func iTermScript(_ devTTY: String) -> String {
         """
         tell application "iTerm2"
-          activate
           repeat with w in windows
             repeat with t in tabs of w
               repeat with s in sessions of t
                 if tty of s is "\(devTTY)" then
+                  tell t to select
                   tell s to select
-                  set frontmost of w to true
+                  activate
                   return "ok"
                 end if
               end repeat

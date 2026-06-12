@@ -17,6 +17,13 @@ enum Main {
             print("notify available=\(NotificationService.available)")
             return
         }
+        if let i = args.firstIndex(of: "--raise"), i + 1 < args.count {
+            let proc = LiveProcess(id: 0, tty: args[i + 1], cwd: nil,
+                                   termProgram: "Apple_Terminal", termSessionId: nil)
+            let r = TerminalActivator.activate(proc, cwd: "/tmp", sessionId: "noop")
+            print("raise \(args[i + 1]): \(r)")
+            return
+        }
         if args.contains("--ratelimit") {
             let sem = DispatchSemaphore(value: 0)
             Task.detached {
