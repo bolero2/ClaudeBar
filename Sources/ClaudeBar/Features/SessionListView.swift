@@ -75,6 +75,19 @@ private struct SessionRow: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.head)
+
+                    if session.live != nil, let activity = session.activity {
+                        HStack(spacing: 4) {
+                            Image(systemName: session.status == .busy
+                                  ? "play.fill" : "quote.bubble")
+                                .font(.system(size: 8))
+                            Text(activity)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                        .font(.system(size: 10))
+                        .foregroundStyle(session.status == .busy ? Color.green : Color.secondary)
+                    }
                 }
 
                 Spacer(minLength: 4)

@@ -23,7 +23,7 @@ enum MockData {
 
     private static func session(_ folder: String, branch: String?, model: String,
                                 ctx: Int, limit: Int, status: SessionStatus,
-                                live: Bool, agoSec: Double) -> Session {
+                                live: Bool, agoSec: Double, activity: String? = nil) -> Session {
         let cwd = "/Users/dev/work/\(folder)"
         return Session(
             id: "mock-\(folder)",
@@ -34,6 +34,7 @@ enum MockData {
             lastActivity: Date().addingTimeInterval(-agoSec),
             status: status,
             live: live ? liveProc("ttys00\(abs(folder.hashValue) % 8)") : nil,
+            activity: activity,
             contextTokens: ctx,
             contextLimit: limit
         )
@@ -42,9 +43,11 @@ enum MockData {
     private static func sessions() -> [Session] {
         [
             session("web-dashboard", branch: "feature/charts", model: "claude-opus-4-8",
-                    ctx: 612_000, limit: 1_000_000, status: .busy, live: true, agoSec: 3),
+                    ctx: 612_000, limit: 1_000_000, status: .busy, live: true, agoSec: 3,
+                    activity: "Bash: npm test"),
             session("api-gateway", branch: "main", model: "claude-sonnet-4-6",
-                    ctx: 88_000, limit: 200_000, status: .waiting, live: true, agoSec: 240),
+                    ctx: 88_000, limit: 200_000, status: .waiting, live: true, agoSec: 240,
+                    activity: "리팩터링을 마쳤습니다. 다음 단계를 진행할까요?"),
             session("ml-pipeline", branch: "main", model: "claude-opus-4-8",
                     ctx: 145_000, limit: 1_000_000, status: .inactive, live: false, agoSec: 5400),
             session("mobile-app", branch: "release/2.0", model: "claude-opus-4-8",

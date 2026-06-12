@@ -67,6 +67,7 @@ enum SessionScanner {
                 ?? matchedCwdInHead(url, projectDirName: dirName)
                 ?? ClaudePaths.decodeProjectDirName(dirName)
             sessions[i].contextTokens = detail.contextCurrent
+            sessions[i].activity = detail.activity
             let baseModel = detail.model.map(Self.stripModelSuffix)
             let configExtended = config?.projectUsesExtendedContext(
                 path: sessions[i].cwd, baseModel: baseModel) ?? false
@@ -106,13 +107,14 @@ enum SessionScanner {
 
     private static func parseTail(_ url: URL, projectDirName: String)
         -> (model: String?, gitBranch: String?, matchedCwd: String?,
-            contextCurrent: Int?, contextMax: Int) {
+            contextCurrent: Int?, contextMax: Int, activity: String?) {
         let text = FileTail.tail(url)
         var model: String?
         var gitBranch: String?
         var matchedCwd: String?    // cwd whose encoding == projectDirName (true launch dir)
         var contextCurrent: Int?   // latest assistant turn's context
         var contextMax = 0         // peak context seen in the tail
+        var activity: String?      // latest assistant action (running tool / message)
 
         // Newest to oldest: keep the first value seen for model/branch and the
         // first (latest) assistant usage as the current context.
@@ -133,6 +135,10 @@ enum SessionScanner {
                         contextMax = max(contextMax, ctx)
                     }
                 }
+                if activity == nil, (obj["type"] as? String) == "assistant",
+                   let content = msg["content"] as? [[String: Any]] {
+                    activity = summarizeContent(content)
+                }
             }
             if model == nil, let m = obj["model"] as? String { model = m }
             if gitBranch == nil, let b = obj["gitBranch"] as? String, !b.isEmpty {
@@ -143,7 +149,37 @@ enum SessionScanner {
                 matchedCwd = c
             }
         }
-        return (model, gitBranch, matchedCwd, contextCurrent, contextMax)
+        return (model, gitBranch, matchedCwd, contextCurrent, contextMax, activity)
+    }
+
+    /// Summarizes an assistant message's content blocks into a one-line activity:
+    /// the tool it's invoking (preferred) or a snippet of its text.
+    private static func summarizeContent(_ blocks: [[String: Any]]) -> String? {
+        for block in blocks.reversed()
+        where (block["type"] as? String) == "tool_use" {
+            guard let name = block["name"] as? String else { continue }
+            let input = block["input"] as? [String: Any] ?? [:]
+            return name + briefInput(input)
+        }
+        for block in blocks.reversed()
+        where (block["type"] as? String) == "text" {
+            guard let text = block["text"] as? String else { continue }
+            let line = text.replacingOccurrences(of: "\n", with: " ")
+                .trimmingCharacters(in: .whitespaces)
+            if !line.isEmpty { return String(line.prefix(80)) }
+        }
+        return nil
+    }
+
+    private static func briefInput(_ input: [String: Any]) -> String {
+        let value = (input["command"] as? String)
+            ?? (input["file_path"] as? String).map { ($0 as NSString).lastPathComponent }
+            ?? (input["pattern"] as? String)
+            ?? (input["path"] as? String).map { ($0 as NSString).lastPathComponent }
+            ?? (input["description"] as? String)
+        guard let v = value, !v.isEmpty else { return "" }
+        let oneLine = v.replacingOccurrences(of: "\n", with: " ")
+        return ": " + String(oneLine.prefix(48))
     }
 
     // MARK: - Live join

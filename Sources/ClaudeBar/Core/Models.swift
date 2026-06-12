@@ -37,6 +37,10 @@ struct Session: Identifiable {
     var status: SessionStatus
     var live: LiveProcess?
 
+    /// What the latest assistant turn is doing (running tool or last message),
+    /// for live sessions. nil when unknown.
+    var activity: String?
+
     /// Current context size = the latest assistant turn's prompt + output
     /// (input + cache_read + cache_creation + output). nil if unknown.
     var contextTokens: Int?
