@@ -15,6 +15,7 @@ final class AppSettings: ObservableObject {
         static let contextWarnPercent = "contextWarnPercent"
         static let rateWarnPercent = "rateWarnPercent"
         static let preferredTerminal = "preferredTerminal"   // "auto" | "Terminal" | "iTerm"
+        static let pinnedProjects = "pinnedProjects"
     }
 
     private let d = UserDefaults.standard
@@ -25,6 +26,19 @@ final class AppSettings: ObservableObject {
     @Published var contextWarnPercent: Double { didSet { d.set(contextWarnPercent, forKey: Key.contextWarnPercent) } }
     @Published var rateWarnPercent: Double { didSet { d.set(rateWarnPercent, forKey: Key.rateWarnPercent) } }
     @Published var preferredTerminal: String { didSet { d.set(preferredTerminal, forKey: Key.preferredTerminal) } }
+    @Published var pinnedProjects: [String] { didSet { d.set(pinnedProjects, forKey: Key.pinnedProjects) } }
+
+    func isPinned(_ projectDirName: String) -> Bool {
+        pinnedProjects.contains(projectDirName)
+    }
+
+    func togglePin(_ projectDirName: String) {
+        if let i = pinnedProjects.firstIndex(of: projectDirName) {
+            pinnedProjects.remove(at: i)
+        } else {
+            pinnedProjects.append(projectDirName)
+        }
+    }
 
     private init() {
         notifyWaiting = (d.object(forKey: Key.notifyWaiting) as? Bool) ?? true
@@ -33,6 +47,7 @@ final class AppSettings: ObservableObject {
         contextWarnPercent = (d.object(forKey: Key.contextWarnPercent) as? Double) ?? 80
         rateWarnPercent = (d.object(forKey: Key.rateWarnPercent) as? Double) ?? 90
         preferredTerminal = (d.string(forKey: Key.preferredTerminal)) ?? "auto"
+        pinnedProjects = (d.array(forKey: Key.pinnedProjects) as? [String]) ?? []
     }
 
     // MARK: - Launch at login (SMAppService, computed — not stored here)

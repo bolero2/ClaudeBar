@@ -13,6 +13,7 @@ enum MockData {
         s.projectMCP = projectMCP()
         s.account = account()
         s.lastRefresh = Date()
+        AppSettings.shared.pinnedProjects = ["-Users-dev-work-mobile-app"]  // demo favorite
         return s
     }
 

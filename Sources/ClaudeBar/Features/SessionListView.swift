@@ -1,38 +1,113 @@
 import SwiftUI
 
+enum SessionFilter: String, CaseIterable, Identifiable {
+    case all, live, ended
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .all: return "전체"
+        case .live: return "실행 중"
+        case .ended: return "종료"
+        }
+    }
+}
+
 struct SessionListView: View {
     @EnvironmentObject var state: AppState
+    @ObservedObject private var settings = AppSettings.shared
+    @State private var query = ""
+    @State private var filter: SessionFilter = .all
     var scroll = true
 
     var body: some View {
-        if scroll {
-            ScrollView { content }
-        } else {
-            content
+        VStack(spacing: 0) {
+            filterBar
+            Divider()
+            if scroll {
+                ScrollView { content }
+            } else {
+                content
+            }
         }
     }
 
+    private var filterBar: some View {
+        VStack(spacing: 6) {
+            // `scroll == false` is the offscreen screenshot path; a TextField
+            // renders as a placeholder box there, so skip it.
+            if scroll {
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    TextField("프로젝트 검색", text: $query)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12))
+                    if !query.isEmpty {
+                        Button { query = "" } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            HStack(spacing: 0) {
+                ForEach(SessionFilter.allCases) { f in
+                    Button { filter = f } label: {
+                        Text(f.title)
+                            .font(.system(size: 11, weight: filter == f ? .semibold : .regular))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                            .background(filter == f ? Color.accentColor.opacity(0.18) : Color.clear)
+                            .foregroundStyle(filter == f ? Color.accentColor : Color.secondary)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .background(Color.primary.opacity(0.05))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .padding(8)
+    }
+
+    private func matches(_ s: Session) -> Bool {
+        let q = query.lowercased()
+        let textOK = q.isEmpty
+            || s.folderName.lowercased().contains(q)
+            || s.cwd.lowercased().contains(q)
+        let statusOK: Bool
+        switch filter {
+        case .all: statusOK = true
+        case .live: statusOK = s.live != nil
+        case .ended: statusOK = s.live == nil
+        }
+        return textOK && statusOK
+    }
+
     private var content: some View {
-        let live = state.sessions.filter { $0.live != nil }
-        let recent = state.sessions.filter { $0.live == nil }.prefix(20)
+        let filtered = state.sessions.filter(matches)
+        let pinned = filtered.filter { settings.isPinned($0.projectDirName) }
+        let live = filtered.filter { $0.live != nil && !settings.isPinned($0.projectDirName) }
+        let recent = filtered.filter { $0.live == nil && !settings.isPinned($0.projectDirName) }.prefix(20)
 
         return VStack(alignment: .leading, spacing: 4) {
-            if live.isEmpty && recent.isEmpty {
-                EmptyHint(text: "세션을 찾을 수 없습니다.")
+            if pinned.isEmpty && live.isEmpty && recent.isEmpty {
+                EmptyHint(text: query.isEmpty ? "세션을 찾을 수 없습니다." : "검색 결과가 없습니다.")
             }
-
+            if !pinned.isEmpty {
+                SectionHeader(title: "즐겨찾기", count: nil)
+                ForEach(pinned) { SessionRow(session: $0) }
+            }
             if !live.isEmpty {
                 SectionHeader(title: "실행 중", count: live.count)
-                ForEach(live) { session in
-                    SessionRow(session: session)
-                }
+                ForEach(live) { SessionRow(session: $0) }
             }
-
             if !recent.isEmpty {
                 SectionHeader(title: "최근 세션", count: nil)
-                ForEach(Array(recent)) { session in
-                    SessionRow(session: session)
-                }
+                ForEach(Array(recent)) { SessionRow(session: $0) }
             }
         }
         .padding(8)
@@ -41,8 +116,11 @@ struct SessionListView: View {
 
 private struct SessionRow: View {
     @EnvironmentObject var state: AppState
+    @ObservedObject private var settings = AppSettings.shared
     let session: Session
     @State private var hovering = false
+
+    private var pinned: Bool { settings.isPinned(session.projectDirName) }
 
     /// Recent (ended) rows are muted to grayscale until hovered.
     private var muted: Bool { session.live == nil && !hovering }
@@ -60,6 +138,11 @@ private struct SessionRow: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
+                        if pinned {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 8))
+                                .foregroundStyle(.yellow)
+                        }
                         Text(session.folderName)
                             .font(.system(size: 12, weight: .medium))
                             .lineLimit(1)
@@ -123,6 +206,10 @@ private struct SessionRow: View {
               ? "클릭: 해당 터미널 탭을 앞으로"
               : "클릭: 새 터미널에서 이 세션 복구 (claude --resume)")
         .contextMenu {
+            Button(pinned ? "즐겨찾기 제거" : "즐겨찾기 추가") {
+                settings.togglePin(session.projectDirName)
+            }
+            Divider()
             if session.live != nil {
                 Button("터미널 앞으로") { state.activate(session) }
                 Button("세션 종료 (kill)", role: .destructive) { state.killSession(session) }
