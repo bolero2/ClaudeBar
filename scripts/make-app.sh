@@ -1,13 +1,13 @@
 #!/bin/bash
-# Builds ClaudeBar.app — a proper macOS menu bar agent bundle from the SwiftPM
-# executable. Output: ./ClaudeBar.app
+# Builds ClaudeDeck.app — a proper macOS menu bar agent bundle from the SwiftPM
+# executable. Output: ./ClaudeDeck.app
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-APP_NAME="ClaudeBar"
-DISPLAY_NAME="Claude Bar"
-BUNDLE_ID="com.claudebar.app"
+APP_NAME="ClaudeDeck"
+DISPLAY_NAME="ClaudeDeck"
+BUNDLE_ID="com.claudedeck.app"
 VERSION="1.0.0"
 BUILD="1"
 
@@ -49,7 +49,7 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
     <key>LSUIElement</key>                   <true/>
     <key>NSAppleEventsUsageDescription</key>
     <string>실행 중인 세션의 터미널 창/탭을 앞으로 가져오기 위해 터미널 앱 제어 권한이 필요합니다.</string>
-    <key>NSHumanReadableCopyright</key>      <string>Claude Bar</string>
+    <key>NSHumanReadableCopyright</key>      <string>ClaudeDeck</string>
 </dict>
 </plist>
 PLIST

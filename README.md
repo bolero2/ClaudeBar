@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="docs/images/logo.png" alt="Claude Bar" width="120" />
+<img src="docs/images/logo.png" alt="ClaudeDeck" width="120" />
 
-# Claude Bar
+# ClaudeDeck
 
 **A native macOS menu bar app to manage multiple Claude Code sessions at a glance**
 
@@ -17,16 +17,16 @@ English &nbsp;·&nbsp; [한국어](README-kr.md)
 </p>
 
 <p>
-  <a href="https://github.com/bolero2/ClaudeBar/releases/latest"><b>⬇︎ Download the latest ClaudeBar.app</b></a>
+  <a href="https://github.com/bolero2/ClaudeDeck/releases/latest"><b>⬇︎ Download the latest ClaudeDeck.app</b></a>
 </p>
 
-<img src="docs/images/sessions.png" alt="Claude Bar — Sessions" width="340" />
+<img src="docs/images/sessions.png" alt="ClaudeDeck — Sessions" width="340" />
 
 </div>
 
 ---
 
-When you run several Claude Code sessions across different terminals, Claude Bar shows — right from the menu bar — **which session is working, where it's running, and how full its context window is**. One click jumps to the owning terminal or resumes an ended session. It's 100% native Swift, has zero dependencies, and is **read-only**: it only looks at files under `~/.claude`.
+When you run several Claude Code sessions across different terminals, ClaudeDeck shows — right from the menu bar — **which session is working, where it's running, and how full its context window is**. One click jumps to the owning terminal or resumes an ended session. It's 100% native Swift, has zero dependencies, and is **read-only**: it only looks at files under `~/.claude`.
 
 ## ✨ Features
 
@@ -81,12 +81,12 @@ When you run several Claude Code sessions across different terminals, Claude Bar
 
 ### Download (no build) — recommended
 
-1. Grab `ClaudeBar.zip` from the [**latest release**](https://github.com/bolero2/ClaudeBar/releases/latest).
-2. Unzip and move `ClaudeBar.app` to `/Applications`.
+1. Grab `ClaudeDeck.zip` from the [**latest release**](https://github.com/bolero2/ClaudeDeck/releases/latest).
+2. Unzip and move `ClaudeDeck.app` to `/Applications`.
 3. The app is ad-hoc signed (not notarized), so macOS quarantines it. Clear the flag once:
 
    ```bash
-   xattr -dr com.apple.quarantine /Applications/ClaudeBar.app
+   xattr -dr com.apple.quarantine /Applications/ClaudeDeck.app
    ```
 
    (or right-click the app → **Open** → **Open**.) Then launch it — it lives in the menu bar.
@@ -96,25 +96,25 @@ When you run several Claude Code sessions across different terminals, Claude Bar
 > Requires **Swift 5.9+** (developed on macOS 26 / Swift 6.3).
 
 ```bash
-git clone https://github.com/bolero2/ClaudeBar.git
-cd ClaudeBar
-./scripts/make-app.sh      # release build + Info.plist + ad-hoc sign → ClaudeBar.app
-open ClaudeBar.app         # runs in the menu bar (no Dock icon)
+git clone https://github.com/bolero2/ClaudeDeck.git
+cd ClaudeDeck
+./scripts/make-app.sh      # release build + Info.plist + ad-hoc sign → ClaudeDeck.app
+open ClaudeDeck.app         # runs in the menu bar (no Dock icon)
 ```
 
-Drag `ClaudeBar.app` into `/Applications` to install it like any other app.
+Drag `ClaudeDeck.app` into `/Applications` to install it like any other app.
 To launch at login, add it under **System Settings → General → Login Items**.
 
 > 🔑 **First-run permissions**
-> - Jumping to a terminal needs **Automation (AppleScript)** permission (System Settings → Privacy & Security → Automation → ClaudeBar → Terminal).
+> - Jumping to a terminal needs **Automation (AppleScript)** permission (System Settings → Privacy & Security → Automation → ClaudeDeck → Terminal).
 > - The official usage lookup reads the OAuth token from the Keychain and may show a one-time **Keychain access** prompt — allow it.
 
 ### Run directly (development)
 
 ```bash
 swift build -c release
-.build/release/ClaudeBar             # menu bar
-.build/release/ClaudeBar --probe     # headless self-check (prints to console)
+.build/release/ClaudeDeck             # menu bar
+.build/release/ClaudeDeck --probe     # headless self-check (prints to console)
 ```
 
 ## 🛠️ How it works
@@ -132,16 +132,16 @@ Strictly **read-only**, except for MCP toggles (which edit `~/.claude.json`) and
 
 ### Privacy & security
 
-- Process environments contain secrets such as `CLAUDE_API_KEY`; Claude Bar extracts only `TERM_PROGRAM` / `TERM_SESSION_ID` for terminal identification and never stores or logs the rest.
+- Process environments contain secrets such as `CLAUDE_API_KEY`; ClaudeDeck extracts only `TERM_PROGRAM` / `TERM_SESSION_ID` for terminal identification and never stores or logs the rest.
 - The OAuth access token (read from the macOS Keychain) is used only in the `Authorization` header of the usage request — never logged or persisted.
-- `~/.claude.json` edits (MCP toggles) are **atomic** and keep a rolling backup (`~/.claude.json.claudebar-bak`). Disabled global servers are stashed in a sidecar file so their config is never lost.
+- `~/.claude.json` edits (MCP toggles) are **atomic** and keep a rolling backup (`~/.claude.json.claudedeck-bak`). Disabled global servers are stashed in a sidecar file so their config is never lost.
 
 > The `/api/oauth/usage` endpoint is **undocumented**; if Anthropic changes it the app falls back to the local token aggregation.
 
 ## 🧱 Architecture
 
 ```
-Sources/ClaudeBar/
+Sources/ClaudeDeck/
 ├─ App.swift            entry point (@main) · MenuBarExtra · hides Dock icon
 ├─ AppState.swift       observable state (sessions 5s / usage + rate-limit 60s)
 ├─ Diagnostics.swift    --probe self-check · --render screenshots
@@ -171,4 +171,4 @@ Sources/ClaudeBar/
 
 [MIT](LICENSE) © bolero2
 
-<sub>Claude Bar is an unofficial community project, not affiliated with Anthropic.</sub>
+<sub>ClaudeDeck is an unofficial community project, not affiliated with Anthropic.</sub>

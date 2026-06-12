@@ -4,7 +4,7 @@ import UserNotifications
 /// Posts macOS notifications for session/usage events.
 ///
 /// `UNUserNotificationCenter` requires a real app bundle, so this is a no-op
-/// when running the bare SPM executable (it only works from `ClaudeBar.app`).
+/// when running the bare SPM executable (it only works from `ClaudeDeck.app`).
 enum NotificationService {
 
     /// Notifications need a bundle identifier (i.e. running as `.app`).

@@ -31,7 +31,7 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 8) {
                 Image(systemName: "sparkle").foregroundStyle(.tint)
-                Text("Claude Bar").font(.system(size: 14, weight: .semibold))
+                Text("ClaudeDeck").font(.system(size: 14, weight: .semibold))
                 Spacer()
                 NewSessionMenu()
             }

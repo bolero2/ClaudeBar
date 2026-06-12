@@ -14,7 +14,7 @@ enum Main {
         if args.contains("--notify-test") {
             NotificationService.requestAuthorization()
             Thread.sleep(forTimeInterval: 2)
-            NotificationService.post(title: "Claude Bar", body: "알림이 정상 동작합니다 ✅")
+            NotificationService.post(title: "ClaudeDeck", body: "알림이 정상 동작합니다 ✅")
             Thread.sleep(forTimeInterval: 2)
             print("notify available=\(NotificationService.available)")
             return
@@ -73,11 +73,11 @@ enum Main {
             }
             return
         }
-        ClaudeBarApp.main()
+        ClaudeDeckApp.main()
     }
 }
 
-struct ClaudeBarApp: App {
+struct ClaudeDeckApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     var body: some Scene {
         // The UI lives in a status-item popover managed by AppDelegate; this
@@ -129,7 +129,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             Task { @MainActor in self?.togglePopover() }
         }
 
-        // Launch straight into the dashboard window (e.g. `open -a ClaudeBar --args --dashboard`).
+        // Launch straight into the dashboard window (e.g. `open -a ClaudeDeck --args --dashboard`).
         if CommandLine.arguments.contains("--dashboard") {
             openDashboard()
         }
@@ -139,7 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         guard let button = statusItem.button else { return }
         let s = AppState.shared
         let symbol = s.contextWarning ? "exclamationmark.triangle.fill" : "sparkle"
-        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Claude Bar")
+        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "ClaudeDeck")
         image?.isTemplate = !s.contextWarning
         button.image = image
         button.imagePosition = .imageLeading
@@ -176,7 +176,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let host = NSHostingController(
             rootView: DashboardView().environmentObject(AppState.shared))
         let w = NSWindow(contentViewController: host)
-        w.title = "Claude Bar"
+        w.title = "ClaudeDeck"
         w.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         w.setContentSize(NSSize(width: 880, height: 580))
         w.center()

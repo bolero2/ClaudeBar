@@ -6,7 +6,7 @@ import Foundation
 /// - Project `.mcp.json` servers use Claude Code's own `enabledMcpjsonServers` /
 ///   `disabledMcpjsonServers` lists, which Claude preserves.
 /// - Global `mcpServers` has no disable flag, so a disabled global server's
-///   config is stashed in a sidecar file we own (`claudebar-disabled-mcp.json`)
+///   config is stashed in a sidecar file we own (`claudedeck-disabled-mcp.json`)
 ///   and removed from `mcpServers`. This avoids losing the config if Claude
 ///   rewrites `~/.claude.json` and drops unknown keys.
 /// - Writes are atomic, and a single rolling backup is kept.
@@ -21,7 +21,7 @@ enum MCPService {
     }
 
     private static var sidecarURL: URL {
-        ClaudePaths.claudeDir.appendingPathComponent("claudebar-disabled-mcp.json")
+        ClaudePaths.claudeDir.appendingPathComponent("claudedeck-disabled-mcp.json")
     }
 
     /// Disabled global servers stashed in our sidecar file (name -> config).
@@ -92,7 +92,7 @@ enum MCPService {
         else { return .failed("~/.claude.json 읽기 실패") }
 
         // Rolling backup before we touch it.
-        try? data.write(to: url.appendingPathExtension("claudebar-bak"))
+        try? data.write(to: url.appendingPathExtension("claudedeck-bak"))
 
         change(&root)
 

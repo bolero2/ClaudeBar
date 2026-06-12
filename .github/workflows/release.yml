@@ -1,6 +1,6 @@
 name: Release
 
-# Build ClaudeBar.app and attach it to a GitHub Release when a v* tag is pushed.
+# Build ClaudeDeck.app and attach it to a GitHub Release when a v* tag is pushed.
 #   git tag v1.0.1 && git push origin v1.0.1
 on:
   push:
@@ -20,22 +20,22 @@ jobs:
       - name: Show toolchain
         run: swift --version
 
-      - name: Build ClaudeBar.app
+      - name: Build ClaudeDeck.app
         run: ./scripts/make-app.sh
 
       - name: Zip bundle
-        run: ditto -c -k --keepParent ClaudeBar.app ClaudeBar.zip
+        run: ditto -c -k --keepParent ClaudeDeck.app ClaudeDeck.zip
 
       - name: Create / update release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
-          files: ClaudeBar.zip
+          files: ClaudeDeck.zip
           generate_release_notes: true
           body: |
-            Prebuilt **ClaudeBar.app** — download `ClaudeBar.zip`, unzip, move to `/Applications`.
+            Prebuilt **ClaudeDeck.app** — download `ClaudeDeck.zip`, unzip, move to `/Applications`.
 
             ⚠️ The app is ad-hoc signed (not notarized). On first launch, remove the quarantine flag:
             ```bash
-            xattr -dr com.apple.quarantine /Applications/ClaudeBar.app
+            xattr -dr com.apple.quarantine /Applications/ClaudeDeck.app
             ```
             (or right-click → Open). Requires macOS 13+.

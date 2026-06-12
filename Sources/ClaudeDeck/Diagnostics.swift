@@ -3,11 +3,11 @@ import SwiftUI
 import AppKit
 
 /// Headless self-check: runs every data source once and prints a summary.
-/// Invoked with `ClaudeBar --probe` so the services can be verified against
+/// Invoked with `ClaudeDeck --probe` so the services can be verified against
 /// real ~/.claude data without launching the menu bar UI.
 enum Diagnostics {
     static func run() {
-        print("== Claude Bar 진단 ==\n")
+        print("== ClaudeDeck 진단 ==\n")
 
         let live = ProcessProbe.liveProcesses()
         print("● 라이브 claude 프로세스: \(live.count)")
@@ -66,7 +66,7 @@ enum Diagnostics {
     }
 
     /// Renders the popover (at the given tab) to a PNG so the layout can be
-    /// inspected headlessly. Usage: `ClaudeBar --render <tab> <path> [mock]`.
+    /// inspected headlessly. Usage: `ClaudeDeck --render <tab> <path> [mock]`.
     /// With `mock`, fabricated data is used (for README screenshots) so no real
     /// session/account data is ever captured.
     @MainActor
@@ -114,7 +114,7 @@ enum Diagnostics {
     }
 
     /// Renders the full dashboard window to a PNG. Usage:
-    /// `ClaudeBar --render dashboard <path> [mock]`.
+    /// `ClaudeDeck --render dashboard <path> [mock]`.
     @MainActor
     static func renderDashboard(to path: String, mock: Bool = false) {
         let state: AppState

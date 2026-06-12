@@ -3,7 +3,7 @@ import Foundation
 /// Lightweight localization. Korean source strings act as keys; English is
 /// looked up in a table. The current language is read from UserDefaults so this
 /// works from any thread/actor. Views rebuild on language change because the
-/// root view is keyed by the language (see `ClaudeBarApp`).
+/// root view is keyed by the language (see `ClaudeDeckApp`).
 func L(_ ko: String) -> String {
     isEnglish ? (Loc.en[ko] ?? ko) : ko
 }

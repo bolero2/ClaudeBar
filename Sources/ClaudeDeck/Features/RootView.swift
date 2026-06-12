@@ -63,7 +63,7 @@ struct RootView: View {
         HStack(spacing: 8) {
             Image(systemName: "sparkle")
                 .foregroundStyle(.tint)
-            Text("Claude Bar")
+            Text("ClaudeDeck")
                 .font(.system(size: 13, weight: .semibold))
             if state.liveSessionCount > 0 {
                 Text("\(state.liveSessionCount) \(L("실행 중"))")

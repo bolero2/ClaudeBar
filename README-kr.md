@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="docs/images/logo.png" alt="Claude Bar" width="120" />
+<img src="docs/images/logo.png" alt="ClaudeDeck" width="120" />
 
-# Claude Bar
+# ClaudeDeck
 
 **여러 Claude Code 세션을 한눈에 관리하는 macOS 메뉴바 앱**
 
@@ -17,16 +17,16 @@
 </p>
 
 <p>
-  <a href="https://github.com/bolero2/ClaudeBar/releases/latest"><b>⬇︎ 최신 ClaudeBar.app 다운로드</b></a>
+  <a href="https://github.com/bolero2/ClaudeDeck/releases/latest"><b>⬇︎ 최신 ClaudeDeck.app 다운로드</b></a>
 </p>
 
-<img src="docs/images/ko/sessions.png" alt="Claude Bar — 세션" width="340" />
+<img src="docs/images/ko/sessions.png" alt="ClaudeDeck — 세션" width="340" />
 
 </div>
 
 ---
 
-여러 터미널에서 동시에 Claude Code를 돌릴 때, Claude Bar는 **어떤 세션이 진행 중인지 · 어디서 돌고 있는지 · 컨텍스트가 얼마나 찼는지**를 메뉴바에서 바로 보여줍니다. 클릭 한 번으로 해당 터미널로 점프하거나 종료된 세션을 복구합니다. 100% 네이티브 Swift, 외부 의존성 없음, **읽기 전용**으로 `~/.claude`만 들여다봅니다.
+여러 터미널에서 동시에 Claude Code를 돌릴 때, ClaudeDeck는 **어떤 세션이 진행 중인지 · 어디서 돌고 있는지 · 컨텍스트가 얼마나 찼는지**를 메뉴바에서 바로 보여줍니다. 클릭 한 번으로 해당 터미널로 점프하거나 종료된 세션을 복구합니다. 100% 네이티브 Swift, 외부 의존성 없음, **읽기 전용**으로 `~/.claude`만 들여다봅니다.
 
 ## ✨ 주요 기능
 
@@ -81,12 +81,12 @@
 
 ### 다운로드 (빌드 불필요) — 권장
 
-1. [**최신 릴리즈**](https://github.com/bolero2/ClaudeBar/releases/latest)에서 `ClaudeBar.zip`을 받습니다.
-2. 압축을 풀고 `ClaudeBar.app`을 `/Applications`로 옮깁니다.
+1. [**최신 릴리즈**](https://github.com/bolero2/ClaudeDeck/releases/latest)에서 `ClaudeDeck.zip`을 받습니다.
+2. 압축을 풀고 `ClaudeDeck.app`을 `/Applications`로 옮깁니다.
 3. ad-hoc 서명(노타라이즈 안 됨)이라 macOS가 격리하므로, 한 번만 격리 플래그를 제거합니다:
 
    ```bash
-   xattr -dr com.apple.quarantine /Applications/ClaudeBar.app
+   xattr -dr com.apple.quarantine /Applications/ClaudeDeck.app
    ```
 
    (또는 앱 우클릭 → **열기** → **열기**.) 이후 실행하면 메뉴바에 뜹니다.
@@ -96,25 +96,25 @@
 > **Swift 5.9+** 필요 (개발 환경: macOS 26 / Swift 6.3).
 
 ```bash
-git clone https://github.com/bolero2/ClaudeBar.git
-cd ClaudeBar
-./scripts/make-app.sh      # release 빌드 + Info.plist + ad-hoc 서명 → ClaudeBar.app
-open ClaudeBar.app         # 메뉴바에서 실행 (Dock 미표시)
+git clone https://github.com/bolero2/ClaudeDeck.git
+cd ClaudeDeck
+./scripts/make-app.sh      # release 빌드 + Info.plist + ad-hoc 서명 → ClaudeDeck.app
+open ClaudeDeck.app         # 메뉴바에서 실행 (Dock 미표시)
 ```
 
-`ClaudeBar.app`을 `/Applications`로 드래그하면 일반 앱처럼 설치됩니다.
+`ClaudeDeck.app`을 `/Applications`로 드래그하면 일반 앱처럼 설치됩니다.
 로그인 시 자동 실행은 **시스템 설정 → 일반 → 로그인 항목**에 추가하세요.
 
 > 🔑 **최초 실행 권한**
-> - 터미널 점프는 **자동화(AppleScript)** 권한이 필요합니다(시스템 설정 → 개인정보 보호 및 보안 → 자동화 → ClaudeBar → Terminal).
+> - 터미널 점프는 **자동화(AppleScript)** 권한이 필요합니다(시스템 설정 → 개인정보 보호 및 보안 → 자동화 → ClaudeDeck → Terminal).
 > - 공식 사용량 조회는 Keychain의 OAuth 토큰을 읽으므로, **Keychain 접근 허용** 프롬프트가 한 번 뜰 수 있습니다 — 허용해 주세요.
 
 ### 개발용 직접 실행
 
 ```bash
 swift build -c release
-.build/release/ClaudeBar             # 메뉴바 실행
-.build/release/ClaudeBar --probe     # UI 없이 데이터 자가 점검 (콘솔 출력)
+.build/release/ClaudeDeck             # 메뉴바 실행
+.build/release/ClaudeDeck --probe     # UI 없이 데이터 자가 점검 (콘솔 출력)
 ```
 
 ## 🛠️ 동작 원리
@@ -134,14 +134,14 @@ MCP 토글(`~/.claude.json` 수정)과 인증 사용량 조회를 제외하면 *
 
 - 프로세스 환경변수에는 `CLAUDE_API_KEY` 등 비밀이 들어있어, 터미널 식별에 필요한 `TERM_PROGRAM` / `TERM_SESSION_ID`만 추출하고 나머지는 저장·로깅하지 않습니다.
 - Keychain에서 읽은 OAuth 토큰은 사용량 요청의 `Authorization` 헤더에만 사용하며 로깅·저장하지 않습니다.
-- `~/.claude.json` 수정(MCP 토글)은 **원자적**이며 롤링 백업(`~/.claude.json.claudebar-bak`)을 둡니다. 끈 전역 서버 설정은 사이드카 파일에 보관해 무손실 복원합니다.
+- `~/.claude.json` 수정(MCP 토글)은 **원자적**이며 롤링 백업(`~/.claude.json.claudedeck-bak`)을 둡니다. 끈 전역 서버 설정은 사이드카 파일에 보관해 무손실 복원합니다.
 
 > `/api/oauth/usage`는 **비공식 엔드포인트**라, Anthropic이 변경하면 로컬 토큰 집계로 폴백합니다.
 
 ## 🧱 아키텍처
 
 ```
-Sources/ClaudeBar/
+Sources/ClaudeDeck/
 ├─ App.swift            진입점(@main) · MenuBarExtra · Dock 숨김
 ├─ AppState.swift       관찰 가능한 상태 (세션 5s / 사용량 + 한도 60s)
 ├─ Diagnostics.swift    --probe 자가 점검 · --render 스크린샷
@@ -171,4 +171,4 @@ Sources/ClaudeBar/
 
 [MIT](LICENSE) © bolero2
 
-<sub>Claude Bar는 Anthropic과 무관한 비공식 커뮤니티 프로젝트입니다.</sub>
+<sub>ClaudeDeck는 Anthropic과 무관한 비공식 커뮤니티 프로젝트입니다.</sub>

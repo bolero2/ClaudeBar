@@ -7,9 +7,9 @@
 - macOS 메뉴바 네이티브 앱 (Swift / SwiftUI / SwiftPM, **외부 의존성 0**). 여러 Claude Code 세션을 한곳에서 관리.
 - 핵심 가치: 세션 상태(진행/대기/종료)·위치·모델·컨텍스트를 메뉴바에서 한눈에, 클릭 한 번으로 터미널 점프/세션 복구.
 - 동작 범위: 대부분 **읽기 전용**(`~/.claude` 파일). 예외 — MCP 토글(`~/.claude.json` 원자적 수정), `/compact`·`/clear` 터미널 주입, 공식 사용량(Keychain OAuth).
-- 저장소: `bolero2/ClaudeBar` (※ **이름 변경 검토 중** — 동명 repo 존재, 아래 "미해결" 참고).
+- 저장소: `bolero2/ClaudeDeck` (※ **이름 변경 검토 중** — 동명 repo 존재, 아래 "미해결" 참고).
 
-## 아키텍처 (`Sources/ClaudeBar/`)
+## 아키텍처 (`Sources/ClaudeDeck/`)
 
 - **App.swift** — `@main`, `NSStatusItem`+`NSPopover`, 전역 단축키(⌥⌘C), 알림 클릭 핸들링, 대시보드 윈도우(`.regular`↔`.accessory` 전환), Dock 아이콘. CLI 플래그: `--probe`/`--render`/`--dashboard`/`--raise`/`--mcp`/`--ratelimit`/`--notify-test`.
 - **AppState.swift** — `@MainActor` 단일 상태 저장소. 세션 5s · 사용량/한도 60s 주기. `compact`/`clearSession`/`sendSlashCommand`, `activate`(resume 플래그 재구성), MCP 토글, 알림 평가, `appIcon`.
@@ -37,7 +37,7 @@
 
 - **resume의 1M 복원 불확실**: `--model '<base>[1m]'`을 명시 전달하지만, Claude Code가 `--resume`에서 이 플래그를 존중하는지 문서/실동작이 어긋남 → 실기기 확인 필요. 권한 모드 복원은 확실.
 - **알림 아이콘**: macOS는 Launch Services 등록 아이콘을 사용 → 앱을 `/Applications`에 설치/실행해야 로고가 표시됨(임의 경로 ad-hoc 실행 시 제네릭).
-- **이름 변경 보류**: 'ClaudeBar' 동명 repo(사용량 전용 앱) 존재. 본 앱은 세션관리/compact/MCP 등 올라운더 지향 → 신규 네이밍 후보 논의 중. 변경 시 repo명·번들 ID(`com.claudebar.app`)·README·스크린샷·릴리즈 영향.
+- **이름 변경 보류**: 'ClaudeDeck' 동명 repo(사용량 전용 앱) 존재. 본 앱은 세션관리/compact/MCP 등 올라운더 지향 → 신규 네이밍 후보 논의 중. 변경 시 repo명·번들 ID(`com.claudedeck.app`)·README·스크린샷·릴리즈 영향.
 - **위젯 보류**: App Groups용 Apple Developer 서명 필요(ad-hoc 불가).
 - **멀티 계정 전환**: 로드맵.
 
@@ -45,9 +45,9 @@
 
 ```bash
 swift build                                   # 디버그 빌드
-.build/release/ClaudeBar --probe              # 헤드리스 자가점검(실데이터)
-./scripts/make-app.sh                         # ClaudeBar.app (release + ad-hoc 서명)
-ClaudeBar --render <tab|dashboard> out.png mock <en|ko>   # 목업 스크린샷
+.build/release/ClaudeDeck --probe              # 헤드리스 자가점검(실데이터)
+./scripts/make-app.sh                         # ClaudeDeck.app (release + ad-hoc 서명)
+ClaudeDeck --render <tab|dashboard> out.png mock <en|ko>   # 목업 스크린샷
 git tag vX.Y.Z && git push origin vX.Y.Z      # 릴리즈 CI 트리거
 ```
 
