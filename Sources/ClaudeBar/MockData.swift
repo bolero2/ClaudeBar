@@ -48,7 +48,7 @@ enum MockData {
             session("web-dashboard", branch: "feature/charts", model: "claude-opus-4-8",
                     ctx: 612_000, limit: 1_000_000, status: .busy, live: true, agoSec: 3,
                     activity: "Bash: npm test", mode: "bypassPermissions"),
-            session("api-gateway", branch: "main", model: "claude-sonnet-4-6",
+            session("api-gateway", branch: "feature/oauth-token-refresh", model: "claude-sonnet-4-6",
                     ctx: 88_000, limit: 200_000, status: .waiting, live: true, agoSec: 240,
                     activity: isEnglish ? "Refactor done. Shall I move on to the next step?"
                                         : "리팩터링을 마쳤습니다. 다음 단계를 진행할까요?",

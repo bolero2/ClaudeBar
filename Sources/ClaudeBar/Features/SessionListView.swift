@@ -156,11 +156,20 @@ private struct SessionRow: View {
                         Text(session.folderName)
                             .font(.system(size: 12, weight: .medium))
                             .lineLimit(1)
+                            .fixedSize()                 // keep the name intact
+                        // Branch fills the row and truncates with … only when it
+                        // actually overflows; if there's no branch, a Spacer holds
+                        // the place. Either way the mode badge sits at the right.
                         if let branch = session.gitBranch, branch != "HEAD" {
                             Label(branch, systemImage: "arrow.triangle.branch")
                                 .font(.system(size: 10))
                                 .foregroundStyle(.secondary)
                                 .labelStyle(.titleAndIcon)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            Spacer(minLength: 4)
                         }
                         if let mode = modeBadge {
                             Text(mode.text)
@@ -170,6 +179,7 @@ private struct SessionRow: View {
                                 .padding(.vertical, 1)
                                 .background(mode.color)
                                 .clipShape(Capsule())
+                                .fixedSize()
                         }
                     }
                     Text(session.cwd)
@@ -191,8 +201,7 @@ private struct SessionRow: View {
                         .foregroundStyle(session.status == .busy ? Color.green : Color.secondary)
                     }
                 }
-
-                Spacer(minLength: 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(Format.model(session.model))
