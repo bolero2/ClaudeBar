@@ -16,6 +16,10 @@
   <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow" />
 </p>
 
+<p>
+  <a href="https://github.com/bolero2/ClaudeBar/releases/latest"><b>⬇︎ 최신 ClaudeBar.app 다운로드</b></a>
+</p>
+
 <img src="docs/images/ko/sessions.png" alt="Claude Bar — 세션" width="340" />
 
 </div>
@@ -73,9 +77,23 @@
 
 ## 🚀 설치 및 실행
 
-> 요구 환경: **macOS 13+** · **Swift 5.9+** (개발 환경: macOS 26 / Swift 6.3)
+> 요구 환경: **macOS 13+**
 
-### `.app` 번들로 빌드 (권장)
+### 다운로드 (빌드 불필요) — 권장
+
+1. [**최신 릴리즈**](https://github.com/bolero2/ClaudeBar/releases/latest)에서 `ClaudeBar.zip`을 받습니다.
+2. 압축을 풀고 `ClaudeBar.app`을 `/Applications`로 옮깁니다.
+3. ad-hoc 서명(노타라이즈 안 됨)이라 macOS가 격리하므로, 한 번만 격리 플래그를 제거합니다:
+
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/ClaudeBar.app
+   ```
+
+   (또는 앱 우클릭 → **열기** → **열기**.) 이후 실행하면 메뉴바에 뜹니다.
+
+### 소스에서 빌드
+
+> **Swift 5.9+** 필요 (개발 환경: macOS 26 / Swift 6.3).
 
 ```bash
 git clone https://github.com/bolero2/ClaudeBar.git

@@ -16,6 +16,10 @@ English &nbsp;·&nbsp; [한국어](README-kr.md)
   <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow" />
 </p>
 
+<p>
+  <a href="https://github.com/bolero2/ClaudeBar/releases/latest"><b>⬇︎ Download the latest ClaudeBar.app</b></a>
+</p>
+
 <img src="docs/images/sessions.png" alt="Claude Bar — Sessions" width="340" />
 
 </div>
@@ -73,9 +77,23 @@ When you run several Claude Code sessions across different terminals, Claude Bar
 
 ## 🚀 Install & Run
 
-> Requirements: **macOS 13+** · **Swift 5.9+** (developed on macOS 26 / Swift 6.3)
+> Requirements: **macOS 13+**
 
-### Build the `.app` bundle (recommended)
+### Download (no build) — recommended
+
+1. Grab `ClaudeBar.zip` from the [**latest release**](https://github.com/bolero2/ClaudeBar/releases/latest).
+2. Unzip and move `ClaudeBar.app` to `/Applications`.
+3. The app is ad-hoc signed (not notarized), so macOS quarantines it. Clear the flag once:
+
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/ClaudeBar.app
+   ```
+
+   (or right-click the app → **Open** → **Open**.) Then launch it — it lives in the menu bar.
+
+### Build from source
+
+> Requires **Swift 5.9+** (developed on macOS 26 / Swift 6.3).
 
 ```bash
 git clone https://github.com/bolero2/ClaudeBar.git
