@@ -102,6 +102,25 @@ final class AppState: ObservableObject {
         }
     }
 
+    // MARK: - MCP toggle
+
+    /// Enables/disables an MCP server, then reloads config to reflect the change.
+    func toggleMCP(_ server: MCPServerInfo) {
+        guard server.toggleable else { return }
+        Task.detached(priority: .userInitiated) {
+            _ = MCPService.toggle(server)
+            await MainActor.run { self.reloadConfig() }
+        }
+    }
+
+    /// Re-reads MCP + account from ~/.claude.json (cheap; no process scan).
+    func reloadConfig() {
+        let config = ConfigStore()
+        globalMCP = config?.globalMCPServers() ?? []
+        projectMCP = config?.projectMCPServers() ?? []
+        account = config?.account()
+    }
+
     // MARK: - Actions
 
     /// Live session → bring its terminal tab to the front.
