@@ -28,6 +28,7 @@ When you run several Claude Code sessions across different terminals, Claude Bar
 
 - 🖥️ **Session management** — running / waiting / ended status, working directory (cwd), git branch and model, all in one list.
 - 🔭 **Live activity** — each running session shows what it's doing right now: the tool it's invoking (`▶ Bash: npm test`) or its last message.
+- 🔍 **Search · filter · favorites** — search projects, filter by status (all / running / ended), and ★ pin frequently-used projects to the top.
 - 📊 **Per-session context window** — each session shows how much of its context window is used, with the `200K` / `1M` window auto-detected (from the project's `[1m]` model record + the largest observed context).
 - ⚡ **Click to jump / resume**
   - Click a **running** session → bring its **terminal tab to the front**.
@@ -37,9 +38,11 @@ When you run several Claude Code sessions across different terminals, Claude Bar
 - 📈 **Usage**
   - **Official rate limits** — the same data as Claude Code's `/usage`: 5-hour session, 7-day week (and Sonnet-only) **% used + time until reset**.
   - **Cost** — estimated today / 7-day / 30-day spend (token counts × API rates).
+  - **Per-project breakdown** — 7-day cost / tokens / active sessions per project, ranked by spend.
   - **Local token aggregation** — last 5h / 7d token totals, a **daily histogram** (local day), and per-model lifetime totals.
 - 🧩 **MCP** — list global and per-project MCP servers and **toggle them on/off** (safely edits `~/.claude.json`).
 - 👤 **Account** — the currently linked Claude account (email, organization, role).
+- ⚙️ **Settings** — toggle notifications, tune the warning thresholds, pick which terminal to use, and launch at login.
 - 🎛️ **Polished UX** — recent sessions are muted to grayscale until you hover them; the menu bar icon turns into a warning when a live session's context runs high.
 - 🔒 **Local-only** — no network calls except the optional, authenticated usage lookup. Everything else reads files under `~/.claude`.
 
@@ -137,6 +140,7 @@ Sources/ClaudeBar/
 - [x] Official `/usage` rate limits (5h · 7d) with reset times
 - [x] MCP on/off toggle
 - [x] Notifications, live activity, cost tracking, quick actions
+- [x] Settings, search/filter/favorites, per-project breakdown
 - [ ] Global hotkey to open the panel (needs an NSStatusItem refactor)
 - [ ] OAuth token auto-refresh when expired
 - [ ] Multi-account switching
