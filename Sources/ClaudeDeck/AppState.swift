@@ -340,7 +340,9 @@ final class AppState: ObservableObject {
 
     /// For each armed, live, idle session, injects the next queued prompt once
     /// the previous one has been consumed (new activity seen since last inject).
-    private func processPromptQueues(_ sessions: [Session]) {
+    /// Internal (not private) so the headless `--test-orchestration` diagnostic
+    /// can drive it directly; only `refreshSessions` calls it in production.
+    func processPromptQueues(_ sessions: [Session]) {
         guard !runningQueues.isEmpty else { return }
         let settings = AppSettings.shared
         for s in sessions where s.live != nil {

@@ -59,6 +59,18 @@ enum Main {
             sem.wait()
             return
         }
+        if args.contains("--test-queue") {
+            MainActor.assumeIsolated { Diagnostics.testQueue() }
+            return
+        }
+        if args.contains("--test-inject") {
+            Diagnostics.testInject()
+            return
+        }
+        if args.contains("--test-orchestration") {
+            MainActor.assumeIsolated { Diagnostics.testOrchestration() }
+            return
+        }
         // Debug: `--mcp global <name> <on|off>` or `--mcp project <name> <on|off> <path>`
         if let i = args.firstIndex(of: "--mcp"), i + 3 < args.count {
             let scope = args[i + 1], name = args[i + 2], enable = args[i + 3] == "on"
