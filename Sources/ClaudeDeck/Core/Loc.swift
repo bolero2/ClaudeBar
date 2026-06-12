@@ -83,6 +83,8 @@ enum Loc {
         "compact 템플릿": "Compact templates", "새 템플릿": "New template",
         "새 템플릿 추가": "Add template", "이름": "Name",
         "세션 우클릭 → 압축에서 사용합니다.": "Used from a session's right-click → Compact menu.",
+        "저장된 템플릿이 없습니다.": "No saved templates.",
+        "편집은 대시보드에서 가능합니다.": "Edit them in the dashboard.",
         "새 세션 · 권한 건너뛰기": "New session · skip permissions",
         "Claude Code를 시작할 디렉토리를 선택하세요": "Choose a directory to start Claude Code in",
 

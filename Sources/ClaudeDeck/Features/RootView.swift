@@ -47,7 +47,7 @@ struct RootView: View {
                 case .usage: UsageView()
                 case .mcp: MCPView()
                 case .account: AccountView()
-                case .settings: SettingsView()
+                case .settings: SettingsView(allowsEditing: false)
                 }
             }
             .frame(maxHeight: .infinity)

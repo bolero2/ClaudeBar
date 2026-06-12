@@ -3,6 +3,10 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var state: AppState
     @ObservedObject private var settings = AppSettings.shared
+    /// Compact-template editing is a dashboard-only task; the menu-bar popover
+    /// shows them read-only. Keeps the toolbar = quick-glance, dashboard =
+    /// management split clear.
+    var allowsEditing = true
 
     var body: some View {
         ScrollView {
@@ -49,7 +53,11 @@ struct SettingsView: View {
                 }
 
                 section(L("compact 템플릿")) {
-                    CompactTemplatesEditor(settings: settings)
+                    if allowsEditing {
+                        CompactTemplatesEditor(settings: settings)
+                    } else {
+                        CompactTemplatesReadOnly(settings: settings)
+                    }
                 }
 
                 section(L("앱 업데이트")) {
@@ -121,6 +129,35 @@ struct SettingsView: View {
                 .font(.system(size: 11, weight: .medium))
                 .monospacedDigit()
                 .frame(width: 34, alignment: .trailing)
+        }
+    }
+}
+
+/// Read-only template list for the menu-bar popover — editing happens in the
+/// dashboard so the toolbar stays a quick-glance surface.
+private struct CompactTemplatesReadOnly: View {
+    @ObservedObject var settings: AppSettings
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if settings.compactTemplates.isEmpty {
+                Text(L("저장된 템플릿이 없습니다."))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(settings.compactTemplates) { template in
+                    HStack(spacing: 6) {
+                        Image(systemName: "text.alignleft")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                        Text(template.name).font(.system(size: 12))
+                        Spacer()
+                    }
+                }
+            }
+            Text(L("편집은 대시보드에서 가능합니다."))
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
         }
     }
 }
