@@ -93,6 +93,7 @@ enum Diagnostics {
                 case .sessions: SessionListView(scroll: false)
                 case .mcp: MCPView(scroll: false)
                 case .account: AccountView(scroll: false)
+                case .settings: SettingsView()
                 }
             }
             .frame(width: 380)

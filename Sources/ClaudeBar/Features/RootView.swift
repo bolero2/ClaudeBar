@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum Tab: String, CaseIterable, Identifiable {
-    case sessions, usage, mcp, account
+    case sessions, usage, mcp, account, settings
     var id: String { rawValue }
 
     var title: String {
@@ -10,6 +10,7 @@ enum Tab: String, CaseIterable, Identifiable {
         case .usage: return "사용량"
         case .mcp: return "MCP"
         case .account: return "계정"
+        case .settings: return "설정"
         }
     }
 
@@ -19,6 +20,7 @@ enum Tab: String, CaseIterable, Identifiable {
         case .usage: return "chart.bar.fill"
         case .mcp: return "puzzlepiece.extension.fill"
         case .account: return "person.crop.circle"
+        case .settings: return "gearshape"
         }
     }
 }
@@ -44,6 +46,7 @@ struct RootView: View {
                 case .usage: UsageView()
                 case .mcp: MCPView()
                 case .account: AccountView()
+                case .settings: SettingsView()
                 }
             }
             .frame(maxHeight: .infinity)

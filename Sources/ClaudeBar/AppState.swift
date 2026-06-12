@@ -40,7 +40,7 @@ final class AppState: ObservableObject {
     /// True when a live session's context has crossed the warning threshold —
     /// drives the menu-bar alert icon.
     var contextWarning: Bool {
-        peakLiveContextFraction >= SessionContext.warningFraction
+        peakLiveContextFraction >= AppSettings.shared.contextWarnPercent / 100
     }
 
     /// Begins both refresh cadences. Called once at app launch (not on popover
@@ -138,8 +138,6 @@ final class AppState: ObservableObject {
     private var contextNotified: [String: Bool] = [:]
     private var rateNotified: [String: Bool] = [:]    // window id -> notified
 
-    private static let contextThreshold = SessionContext.warningFraction   // 0.80
-    private static let rateThreshold = 90.0
     private static let waitDebounce: TimeInterval = 10
 
     /// Notifies when a live session goes idle (awaiting input) or its context
@@ -149,6 +147,8 @@ final class AppState: ObservableObject {
         let live = sessions.filter { $0.live != nil }
         let priming = !sessionsPrimed
         sessionsPrimed = true
+        let settings = AppSettings.shared
+        let contextThreshold = settings.contextWarnPercent / 100
 
         var liveIDs = Set<String>()
         for s in live {
@@ -163,9 +163,11 @@ final class AppState: ObservableObject {
                     waitNotified[id] = true
                 } else if Date().timeIntervalSince(since) >= Self.waitDebounce,
                           waitNotified[id] != true {
-                    NotificationService.post(
-                        title: "입력 대기 중",
-                        body: "\(s.folderName) 세션이 입력을 기다립니다.")
+                    if settings.notifyWaiting {
+                        NotificationService.post(
+                            title: "입력 대기 중",
+                            body: "\(s.folderName) 세션이 입력을 기다립니다.")
+                    }
                     waitNotified[id] = true
                 }
             } else {
@@ -175,13 +177,15 @@ final class AppState: ObservableObject {
 
             // Context window threshold (crossing upward).
             let frac = s.contextFraction ?? 0
-            if frac >= Self.contextThreshold {
+            if frac >= contextThreshold {
                 if priming {
                     contextNotified[id] = true
                 } else if contextNotified[id] != true {
-                    NotificationService.post(
-                        title: "컨텍스트 한도 임박",
-                        body: "\(s.folderName) 컨텍스트 \(Int(frac * 100))% · \(SessionContext.windowLabel(s.contextLimit))")
+                    if settings.notifyContext {
+                        NotificationService.post(
+                            title: "컨텍스트 한도 임박",
+                            body: "\(s.folderName) 컨텍스트 \(Int(frac * 100))% · \(SessionContext.windowLabel(s.contextLimit))")
+                    }
                     contextNotified[id] = true
                 }
             } else {
@@ -198,14 +202,17 @@ final class AppState: ObservableObject {
     private func evaluateRateLimitNotifications(_ rate: RateLimitUsage) {
         let priming = !rateLimitPrimed
         rateLimitPrimed = true
+        let settings = AppSettings.shared
         for w in rate.windows {
-            if w.utilization >= Self.rateThreshold {
+            if w.utilization >= settings.rateWarnPercent {
                 if priming {
                     rateNotified[w.id] = true
                 } else if rateNotified[w.id] != true {
-                    NotificationService.post(
-                        title: "사용 한도 임박",
-                        body: "\(w.title) \(Int(w.utilization))% 사용 · 리셋 \(Format.resetIn(w.resetsAt))")
+                    if settings.notifyRateLimit {
+                        NotificationService.post(
+                            title: "사용 한도 임박",
+                            body: "\(w.title) \(Int(w.utilization))% 사용 · 리셋 \(Format.resetIn(w.resetsAt))")
+                    }
                     rateNotified[w.id] = true
                 }
             } else {

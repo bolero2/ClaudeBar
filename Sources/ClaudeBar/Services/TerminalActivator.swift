@@ -64,6 +64,12 @@ enum TerminalActivator {
     private enum TerminalApp { case appleTerminal, iTerm }
 
     private static func preferredTerminal() -> TerminalApp {
+        // Explicit user choice (read from UserDefaults — thread-safe).
+        switch UserDefaults.standard.string(forKey: AppSettings.Key.preferredTerminal) {
+        case "Terminal": return .appleTerminal
+        case "iTerm": return .iTerm
+        default: break   // "auto"
+        }
         let running = NSWorkspace.shared.runningApplications.compactMap { $0.bundleIdentifier }
         if running.contains("com.googlecode.iterm2") && !running.contains("com.apple.Terminal") {
             return .iTerm
