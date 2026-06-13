@@ -68,6 +68,10 @@ enum Main {
             Diagnostics.testInject()
             return
         }
+        if args.contains("--test-screen") {
+            Diagnostics.testScreenState()
+            return
+        }
         // `--inject <tty> <text>` — one-shot injectText on a tty (verify type+submit).
         if let i = args.firstIndex(of: "--inject"), i + 2 < args.count {
             let proc = LiveProcess(id: 0, tty: args[i + 1], cwd: nil,

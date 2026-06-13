@@ -175,7 +175,12 @@ enum TerminalActivator {
     /// (`idle`). Derived from the *visible terminal contents* — robust to
     /// Claude Code buffering its JSONL transcript (which makes file-mtime based
     /// detection unreliable for live sessions).
-    enum ScreenState { case idle, busy, unknown }
+    /// `awaitingChoice` is Claude waiting on an interactive *selection* (a
+    /// permission prompt or an AskUserQuestion list) — distinct from `idle`
+    /// (waiting for free-text). The queue injector must NOT inject into a choice,
+    /// or the queued prompt would be typed in as the answer and consume the
+    /// question, so this is treated as not-idle.
+    enum ScreenState { case idle, busy, awaitingChoice, unknown }
 
     /// Reads the visible contents of the tab/session bound to `proc.tty`
     /// WITHOUT changing focus, and classifies Claude's state.
@@ -196,6 +201,10 @@ enum TerminalActivator {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if text.isEmpty || text == "READ_FAIL" { return .unknown }
         if screenIsBusy(text) { return .busy }
+        // Claude is waiting on a selection (permission / AskUserQuestion), not
+        // free-text — injecting here would answer the question. Check before the
+        // idle/CPU path since a choice prompt is idle by every other measure.
+        if screenAwaitingChoice(text) { return .awaitingChoice }
         // Screen looks idle — confirm the process isn't quietly streaming (which
         // it would be if the busy markers above failed to match a newer UI).
         if processBurningCPU(proc.pid) { return .busy }
@@ -208,6 +217,16 @@ enum TerminalActivator {
     /// busy signal.
     static func screenIsBusy(_ text: String) -> Bool {
         text.contains("esc to interrupt") || text.contains("· ↓") || text.contains("· ↑")
+    }
+
+    /// True when Claude's TUI is showing an interactive selection list — a
+    /// permission prompt or an AskUserQuestion — rather than the free-text input
+    /// box. Such prompts mark the highlighted option with a "❯" pointer directly
+    /// in front of a numbered choice (e.g. `❯ 1. Yes`); the text-input prompt and
+    /// the streaming spinner never render this. The pointer is required to sit in
+    /// front of a numbered option so a shell prompt's bare "❯" can't false-match.
+    static func screenAwaitingChoice(_ text: String) -> Bool {
+        text.range(of: #"[❯➤▸▶›]\s*\d+\."#, options: .regularExpression) != nil
     }
 
     /// True if `pid` accrues meaningful CPU over a short sample window — i.e. it's

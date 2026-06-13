@@ -111,6 +111,61 @@ enum Diagnostics {
         print("\n결과: \(pass) PASS / \(fail) FAIL")
     }
 
+    /// Pure-logic test of the screen-state classifiers (`screenIsBusy` /
+    /// `screenAwaitingChoice`) against representative terminal snapshots. Catches
+    /// the regression where an AskUserQuestion / permission selection was read as
+    /// idle and the queue injected a prompt as the answer. No side effects.
+    /// Usage: `ClaudeDeck --test-screen`.
+    static func testScreenState() {
+        print("== 화면 상태 분류 테스트 ==\n")
+        var pass = 0, fail = 0
+        func check(_ label: String, _ cond: Bool) {
+            print("  [\(cond ? "PASS" : "FAIL")] \(label)")
+            cond ? (pass += 1) : (fail += 1)
+        }
+
+        // Busy: streaming spinner / interrupt hint.
+        let busy = "✻ Thinking… (12s · ↓ 3.4k tokens · esc to interrupt)"
+        check("스피너=busy", TerminalActivator.screenIsBusy(busy))
+        check("스피너≠선택", !TerminalActivator.screenAwaitingChoice(busy))
+
+        // Idle: the normal free-text input box.
+        let idle = """
+        ╭──────────────────────────────────────╮
+        │ > Try "edit <file>"                    │
+        ╰──────────────────────────────────────╯
+          ? for shortcuts
+        """
+        check("입력창≠busy", !TerminalActivator.screenIsBusy(idle))
+        check("입력창≠선택", !TerminalActivator.screenAwaitingChoice(idle))
+
+        // AskUserQuestion: numbered options with the "❯" pointer.
+        let question = """
+        Which library should we use?
+        ❯ 1. ArkType
+          2. Zod
+          3. Yup
+        """
+        check("질문 UI=선택", TerminalActivator.screenAwaitingChoice(question))
+        check("질문 UI≠busy", !TerminalActivator.screenIsBusy(question))
+
+        // Permission prompt: also a numbered selection.
+        let permission = """
+        Do you want to proceed?
+          1. Yes
+        ❯ 2. No, and tell Claude what to do differently
+        """
+        check("권한 프롬프트=선택", TerminalActivator.screenAwaitingChoice(permission))
+
+        // A shell prompt's bare "❯" (starship) must NOT read as a selection.
+        check("쉘 프롬프트 ❯ ≠ 선택",
+              !TerminalActivator.screenAwaitingChoice("~/main/github/ClaudeDeck ❯ "))
+        check("일반 텍스트 ≠ 선택",
+              !TerminalActivator.screenAwaitingChoice("step 1. install, then run"))
+
+        print("\n결과: \(pass) PASS / \(fail) FAIL")
+    }
+
     /// End-to-end test of the focus-stealing-free injector: spawns a throwaway
     /// Terminal window, injects a command into its tty via the real
     /// `TerminalActivator.injectText`, and confirms the command actually executed
