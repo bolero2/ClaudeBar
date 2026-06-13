@@ -49,6 +49,17 @@ final class AppState: ObservableObject {
 
     /// Wired up by `AppDelegate` to open the full dashboard window.
     var onOpenDashboard: (() -> Void)?
+    /// Wired up by `AppDelegate` to close the menu-bar popover. Called before any
+    /// modal (NSAlert / NSOpenPanel) so the dialog isn't hidden behind the
+    /// popover, which floats at a high window level. See `prepareForModal`.
+    var onClosePopover: (() -> Void)?
+
+    /// Brings the app forward for a modal and dismisses the popover first so the
+    /// dialog can't appear behind it. No-op for the dashboard (a regular window).
+    private func prepareForModal() {
+        onClosePopover?()
+        NSApp.activate(ignoringOtherApps: true)
+    }
 
     private var sessionTimer: AnyCancellable?
     private var usageTimer: AnyCancellable?
@@ -320,7 +331,7 @@ final class AppState: ObservableObject {
         panel.allowsMultipleSelection = false
         panel.prompt = L("새 세션 시작")
         panel.message = L("Claude Code를 시작할 디렉토리를 선택하세요")
-        NSApp.activate(ignoringOtherApps: true)
+        prepareForModal()
         if panel.runModal() == .OK, let url = panel.url {
             newSession(cwd: url.path, skipPermissions: skipPermissions)
         }
@@ -518,7 +529,7 @@ final class AppState: ObservableObject {
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 22))
         field.placeholderString = L("예: 핵심 결정과 미해결 이슈만 남겨줘")
         alert.accessoryView = field
-        NSApp.activate(ignoringOtherApps: true)
+        prepareForModal()
         alert.window.initialFirstResponder = field
         if alert.runModal() == .alertFirstButtonReturn {
             compact(session, prompt: field.stringValue)
@@ -534,7 +545,7 @@ final class AppState: ObservableObject {
         alert.alertStyle = .warning
         alert.addButton(withTitle: L("비우기"))
         alert.addButton(withTitle: L("취소"))
-        NSApp.activate(ignoringOtherApps: true)
+        prepareForModal()
         if alert.runModal() == .alertFirstButtonReturn {
             sendSlashCommand(session, "/clear")
         }
@@ -594,7 +605,7 @@ final class AppState: ObservableObject {
         alert.informativeText = info
         alert.addButton(withTitle: L("업데이트하기"))
         alert.addButton(withTitle: L("나중에"))
-        NSApp.activate(ignoringOtherApps: true)
+        prepareForModal()
         guard alert.runModal() == .alertFirstButtonReturn else { return }
 
         // Dev binary: can't swap a bundle — open the releases page instead.
@@ -623,7 +634,7 @@ final class AppState: ObservableObject {
         alert.messageText = title
         alert.informativeText = body
         alert.addButton(withTitle: L("확인"))
-        NSApp.activate(ignoringOtherApps: true)
+        prepareForModal()
         _ = alert.runModal()
     }
 }

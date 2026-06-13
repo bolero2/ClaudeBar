@@ -160,6 +160,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         NotificationService.requestAuthorization()
         AppState.shared.start()
         AppState.shared.onOpenDashboard = { [weak self] in self?.openDashboard() }
+        AppState.shared.onClosePopover = { [weak self] in
+            if self?.popover.isShown == true { self?.popover.performClose(nil) }
+        }
 
         // Dock icon (shown when the dashboard makes the app `.regular`).
         if let icon = AppState.appIcon {
