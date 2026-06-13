@@ -43,6 +43,18 @@ enum MCPService {
         }
     }
 
+    // MARK: - Register (global)
+
+    /// Registers a new global MCP server by writing `config` under `mcpServers`
+    /// in `~/.claude.json`. Takes effect for newly started sessions.
+    static func addGlobalServer(name: String, config: [String: Any]) -> Result {
+        mutateConfig { root in
+            var servers = root["mcpServers"] as? [String: Any] ?? [:]
+            servers[name] = config
+            root["mcpServers"] = servers
+        }
+    }
+
     // MARK: - Global
 
     static func setGlobalEnabled(_ name: String, enabled: Bool) -> Result {

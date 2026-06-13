@@ -278,6 +278,22 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Registers a new global MCP server. Validates name/duplicate synchronously
+    /// (cheap, against the already-loaded list) and returns an error message on
+    /// failure, or nil on success — the write + reload happen off the main thread.
+    func addGlobalMCP(name: String, config: [String: Any]) -> String? {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return L("이름을 입력하세요") }
+        if globalMCP.contains(where: { $0.name == trimmed }) {
+            return L("이미 같은 이름의 전역 MCP가 있습니다")
+        }
+        Task.detached(priority: .userInitiated) {
+            _ = MCPService.addGlobalServer(name: trimmed, config: config)
+            await MainActor.run { self.reloadConfig() }
+        }
+        return nil
+    }
+
     /// Re-reads MCP + account from ~/.claude.json (cheap; no process scan).
     func reloadConfig() {
         let config = ConfigStore()

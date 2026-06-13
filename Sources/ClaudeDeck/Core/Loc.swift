@@ -75,6 +75,12 @@ enum Loc {
         "항상 켜짐": "Always on", "클릭: 끄기": "Click to turn off", "클릭: 켜기": "Click to turn on",
         "토글은 새로 시작하는 세션부터 적용됩니다. (실행 중 세션은 영향 없음)":
             "Toggles apply to newly started sessions (running sessions are unaffected).",
+        "등록": "Register", "명령어": "Command",
+        "인자": "Args", "환경변수 (선택)": "Env (optional)", "헤더 (선택)": "Headers (optional)",
+        "한 줄에 하나 (또는 공백 구분)": "one per line (or space-separated)",
+        "예: filesystem": "e.g. filesystem",
+        "이름을 입력하세요": "Enter a name",
+        "이미 같은 이름의 전역 MCP가 있습니다": "A global MCP with that name already exists",
 
         // Account
         "활성": "Active", "조직": "Organization", "역할": "Role", "결제": "Billing",
