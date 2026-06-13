@@ -336,6 +336,39 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Permanently deletes ended sessions: their transcript JSONL, status-cache
+    /// entry, and any scheduled-prompt queue. Live sessions are never deleted —
+    /// the caller already filters them out, and this re-filters as a hard guard.
+    /// Confirms once with a count before removing, then refreshes the list.
+    func deleteSessions(_ sessions: [Session]) {
+        let targets = sessions.filter { $0.live == nil }
+        guard !targets.isEmpty else { return }
+
+        let alert = NSAlert()
+        if let icon = Self.appIcon { alert.icon = icon }
+        alert.messageText = L("세션을 삭제할까요?")
+        alert.informativeText = "\(targets.count)\(L("개 — 세션 기록이 영구 삭제되며 되돌릴 수 없습니다."))"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: L("삭제"))
+        alert.addButton(withTitle: L("취소"))
+        prepareForModal()
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        let settings = AppSettings.shared
+        let fm = FileManager.default
+        for s in targets {
+            let jsonl = ClaudePaths.projectsDir
+                .appendingPathComponent(s.projectDirName, isDirectory: true)
+                .appendingPathComponent(s.id + ".jsonl", isDirectory: false)
+            try? fm.removeItem(at: jsonl)
+            try? fm.removeItem(at: StatusCache.dir.appendingPathComponent(s.id + ".json", isDirectory: false))
+            stopQueue(s.id)
+            settings.clearQueue(s.id)
+            settings.setRemoteControl(s.id, enabled: false)
+        }
+        refreshSessions()
+    }
+
     /// The bundled app logo. NSAlert/Dialogs otherwise fall back to the
     /// Launch-Services-registered icon, which is stale/generic for an ad-hoc
     /// bundle run from an arbitrary path — so we set it explicitly.

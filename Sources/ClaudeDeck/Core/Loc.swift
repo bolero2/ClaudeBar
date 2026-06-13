@@ -33,6 +33,10 @@ enum Loc {
         "검색 결과가 없습니다.": "No results.",
         "터미널 앞으로": "Bring terminal to front",
         "세션 종료 (kill)": "Kill session",
+        "세션 삭제": "Delete session", "선택": "Select", "삭제": "Delete",
+        "세션을 삭제할까요?": "Delete the selected session(s)?",
+        "개 — 세션 기록이 영구 삭제되며 되돌릴 수 없습니다.":
+            " session(s) — transcripts will be permanently deleted and cannot be undone.",
         "압축 (/compact)": "Compact (/compact)", "기본 압축": "Plain compact",
         "직접 입력…": "Custom…", "대화 비우기 (/clear)": "Clear conversation (/clear)",
         "압축 문구 입력": "Compact instruction", "압축": "Compact", "취소": "Cancel",

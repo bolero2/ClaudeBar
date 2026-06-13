@@ -17,6 +17,10 @@ struct SessionListView: View {
     @ObservedObject private var settings = AppSettings.shared
     @State private var query = ""
     @State private var filter: SessionFilter = .all
+    /// Multi-select state for deleting recent (ended) sessions. Only the "최근
+    /// 세션" section opts into selection; live sessions are never selectable.
+    @State private var selecting = false
+    @State private var selectedIds: Set<String> = []
     var scroll = true
     /// Dashboard passes true to allow inline prompt-queue editing; the toolbar
     /// keeps it read-only.
@@ -109,11 +113,57 @@ struct SessionListView: View {
                 ForEach(live) { SessionRow(session: $0, queueEditable: queueEditable) }
             }
             if !recent.isEmpty {
-                SectionHeader(title: L("최근 세션"), count: nil)
-                ForEach(Array(recent)) { SessionRow(session: $0, queueEditable: queueEditable) }
+                recentHeader
+                ForEach(Array(recent)) { s in
+                    SessionRow(session: s, queueEditable: queueEditable,
+                               selecting: selecting,
+                               selected: selectedIds.contains(s.id),
+                               onToggleSelect: { toggleSelect(s.id) })
+                }
             }
         }
         .padding(8)
+        .onChange(of: filter) { _ in exitSelection() }
+    }
+
+    /// "최근 세션" header with the Select / Delete-selected / Cancel controls.
+    private var recentHeader: some View {
+        HStack(spacing: 6) {
+            Text(L("최근 세션"))
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+            Spacer()
+            if selecting {
+                Button {
+                    let targets = state.sessions.filter { selectedIds.contains($0.id) }
+                    state.deleteSessions(targets)
+                    exitSelection()
+                } label: {
+                    Text(L("삭제") + (selectedIds.isEmpty ? "" : " (\(selectedIds.count))"))
+                        .font(.system(size: 11, weight: .medium))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(selectedIds.isEmpty ? Color.secondary : Color.red)
+                .disabled(selectedIds.isEmpty)
+                Button(L("취소")) { exitSelection() }
+                    .font(.system(size: 11)).buttonStyle(.plain).foregroundStyle(.secondary)
+            } else {
+                Button(L("선택")) { selecting = true }
+                    .font(.system(size: 11)).buttonStyle(.plain).foregroundStyle(Color.accentColor)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.top, 6)
+        .padding(.bottom, 2)
+    }
+
+    private func toggleSelect(_ id: String) {
+        if selectedIds.contains(id) { selectedIds.remove(id) } else { selectedIds.insert(id) }
+    }
+
+    private func exitSelection() {
+        selecting = false
+        selectedIds = []
     }
 }
 
@@ -122,6 +172,11 @@ private struct SessionRow: View {
     @ObservedObject private var settings = AppSettings.shared
     let session: Session
     var queueEditable = false
+    /// Selection mode is passed `true` only for recent (ended) rows; the row tap
+    /// then toggles selection instead of activating the session.
+    var selecting = false
+    var selected = false
+    var onToggleSelect: () -> Void = {}
     @State private var hovering = false
     @State private var showQueue = false
 
@@ -137,16 +192,23 @@ private struct SessionRow: View {
         }
     }
 
-    /// Recent (ended) rows are muted to grayscale until hovered.
-    private var muted: Bool { session.live == nil && !hovering }
+    /// Recent (ended) rows are muted to grayscale until hovered — but not while
+    /// the selection checkboxes are showing.
+    private var muted: Bool { session.live == nil && !hovering && !selecting }
 
     var body: some View {
         VStack(spacing: 0) {
         Button {
-            state.activate(session)
+            if selecting { onToggleSelect() } else { state.activate(session) }
         } label: {
             VStack(spacing: 5) {
             HStack(spacing: 8) {
+                if selecting {
+                    Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(selected ? Color.accentColor : Color.secondary)
+                        .font(.system(size: 13))
+                        .frame(width: 16)
+                }
                 Image(systemName: session.status.symbol)
                     .foregroundStyle(statusColor)
                     .font(.system(size: 10))
@@ -277,6 +339,12 @@ private struct SessionRow: View {
             Divider()
             Button(L("Finder에서 열기")) { state.revealInFinder(session.cwd) }
             Button(L("경로 복사")) { state.copyPath(session.cwd) }
+            // Deletion is for ended sessions only; a live session must be killed
+            // first (its transcript is still being written).
+            if session.live == nil {
+                Divider()
+                Button(L("세션 삭제"), role: .destructive) { state.deleteSessions([session]) }
+            }
         }
     }
 
@@ -317,6 +385,7 @@ private struct SessionRow: View {
     }
 
     private var rowBackground: Color {
+        if selecting && selected { return Color.accentColor.opacity(0.18) }
         if session.live != nil { return Color.accentColor.opacity(0.08) }
         return hovering ? Color.primary.opacity(0.06) : Color.clear
     }
