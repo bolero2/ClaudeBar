@@ -218,18 +218,82 @@ enum SessionScanner {
             if let cwd = proc.cwd { liveByDir[ClaudePaths.encodeCwd(cwd)] = proc }
         }
 
-        // For each project folder that has a live process, the newest session
-        // is the active one. `sessions` is already sorted newest-first.
-        var claimedDirs = Set<String>()
-        let now = Date()
-        for i in sessions.indices {
-            let dir = sessions[i].projectDirName
-            guard let proc = liveByDir[dir] else { continue }
-            guard !claimedDirs.contains(dir) else { continue }
-            claimedDirs.insert(dir)
-            sessions[i].live = proc
-            let idle = now.timeIntervalSince(sessions[i].lastActivity)
-            sessions[i].status = idle < 8 ? .busy : .waiting
+        // Freshest statusLine cache per folder. This — not jsonl mtime — names the
+        // session that is actually running: Claude Code 2.1.x may write the live
+        // transcript to disk late or not at all (so the running session can look
+        // older than a sibling, or be absent entirely), whereas the statusLine
+        // cache `ts` is rewritten on every render.
+        var freshestCacheByDir: [String: StatusCache.Entry] = [:]
+        for e in StatusCache.allEntries() {
+            guard let cwd = e.cwd else { continue }
+            let dir = ClaudePaths.encodeCwd(cwd)
+            if let cur = freshestCacheByDir[dir], cur.ts >= e.ts { continue }
+            freshestCacheByDir[dir] = e
         }
+
+        var indicesByDir: [String: [Int]] = [:]
+        for i in sessions.indices {
+            indicesByDir[sessions[i].projectDirName, default: []].append(i)
+        }
+
+        let now = Date()
+        var synthesized: [Session] = []
+        for (dir, proc) in liveByDir {
+            if let cache = freshestCacheByDir[dir] {
+                if let i = sessions.firstIndex(where: { $0.id == cache.sessionId }) {
+                    markLive(&sessions[i], proc: proc, cache: cache, now: now)
+                } else {
+                    // The live session has no transcript on disk yet — build it
+                    // from the cache so it still shows up (live + context).
+                    synthesized.append(synthesizeLive(cache: cache, proc: proc, dir: dir, now: now))
+                }
+                continue
+            }
+            // No cache (helper not installed): fall back to newest-by-mtime.
+            if let i = indicesByDir[dir]?.max(by: { sessions[$0].lastActivity < sessions[$1].lastActivity }) {
+                sessions[i].live = proc
+                let idle = now.timeIntervalSince(sessions[i].lastActivity)
+                sessions[i].status = idle < 8 ? .busy : .waiting
+            }
+        }
+
+        if !synthesized.isEmpty {
+            sessions.append(contentsOf: synthesized)
+            sessions.sort { $0.lastActivity > $1.lastActivity }
+        }
+    }
+
+    /// Marks an existing session live and fills context/model/recency from its
+    /// statusLine cache (transcript values, when present, still win for context).
+    private static func markLive(_ s: inout Session, proc: LiveProcess,
+                                 cache: StatusCache.Entry, now: Date) {
+        s.live = proc
+        if s.contextTokens == nil {
+            s.contextTokens = cache.contextTokens
+            s.contextLimit = cache.contextLimit
+        }
+        if s.model == nil { s.model = cache.model }
+        s.lastActivity = max(s.lastActivity, Date(timeIntervalSince1970: cache.ts))
+        let idle = now.timeIntervalSince(s.lastActivity)
+        s.status = idle < 8 ? .busy : .waiting
+    }
+
+    /// Builds a Session for a live process whose transcript isn't on disk, using
+    /// only the statusLine cache.
+    private static func synthesizeLive(cache: StatusCache.Entry, proc: LiveProcess,
+                                       dir: String, now: Date) -> Session {
+        let when = Date(timeIntervalSince1970: cache.ts)
+        var s = Session(
+            id: cache.sessionId,
+            cwd: cache.cwd ?? proc.cwd ?? ClaudePaths.decodeProjectDirName(dir),
+            projectDirName: dir,
+            gitBranch: nil,
+            model: cache.model,
+            lastActivity: when,
+            status: now.timeIntervalSince(when) < 8 ? .busy : .waiting,
+            live: proc)
+        s.contextTokens = cache.contextTokens
+        s.contextLimit = cache.contextLimit
+        return s
     }
 }

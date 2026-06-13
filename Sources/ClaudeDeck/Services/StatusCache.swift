@@ -35,6 +35,26 @@ enum StatusCache {
         }
     }
 
+    /// All cached entries within `maxAge`, newest `ts` first. Used to identify
+    /// the live session for a working directory: Claude Code 2.1.x may not write
+    /// a running session's transcript to disk at all, so the statusLine cache is
+    /// the only place its id + context appear.
+    static func allEntries(maxAge: TimeInterval = 604_800) -> [Entry] {
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: dir, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]
+        ) else { return [] }
+        let now = Date().timeIntervalSince1970
+        return files
+            .filter { $0.pathExtension == "json" }
+            .compactMap { url -> Entry? in
+                guard let data = try? Data(contentsOf: url),
+                      let e = try? JSONDecoder().decode(Entry.self, from: data),
+                      e.contextLimit > 0, now - e.ts <= maxAge else { return nil }
+                return e
+            }
+            .sorted { $0.ts > $1.ts }
+    }
+
     /// The cached entry for a session id, or nil if absent/unreadable.
     ///
     /// `maxAge` defaults to ~7 days, effectively unbounded: the statusLine stops

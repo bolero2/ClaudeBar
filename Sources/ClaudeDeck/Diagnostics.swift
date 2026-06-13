@@ -260,6 +260,26 @@ enum Diagnostics {
         print("screen \(tty): \(state)  (pid=\(proc.pid), cpu_busy=\(cpu))")
     }
 
+    /// Prints the scanned sessions with their live + context state, so the
+    /// session/live-matching and statusLine-cache overlay can be verified without
+    /// the UI. Usage: `ClaudeDeck --scan`.
+    static func scanProbe() {
+        print("== 세션 스캔 ==\n")
+        let sessions = SessionScanner.scan()
+        let liveCount = sessions.filter { $0.live != nil }.count
+        print("총 \(sessions.count)개 · 라이브 \(liveCount)개\n")
+        for s in sessions.prefix(15) {
+            let live = s.live != nil ? "● LIVE tty=\(s.live?.tty ?? "-")" : "  ended"
+            let ctx: String
+            if let t = s.contextTokens, let f = s.contextFraction {
+                ctx = "\(t)/\(s.contextLimit) (\(Int(f * 100))%)"
+            } else {
+                ctx = "ctx -"
+            }
+            print("  \(live)  \(s.id.prefix(8))  \(s.folderName)  \(ctx)")
+        }
+    }
+
     /// Drives the REAL screen-driven queue against a REAL live Claude session:
     /// finds the session at `cwd`, queues `count` copies of `text`, arms it, then
     /// runs the production `AppState.runQueueLoop` — which injects one prompt at a
