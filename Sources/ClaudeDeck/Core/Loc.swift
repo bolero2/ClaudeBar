@@ -33,6 +33,10 @@ enum Loc {
         "검색 결과가 없습니다.": "No results.",
         "터미널 앞으로": "Bring terminal to front",
         "세션 종료 (kill)": "Kill session",
+        "원격 제어": "Remote control",
+        "원격 제어 켜기": "Enable remote control", "원격 제어 끄기": "Disable remote control",
+        "켜면 이 세션에 /remote-control 명령을 보냅니다":
+            "Sends /remote-control to this session when on",
         "세션 삭제": "Delete session", "선택": "Select", "삭제": "Delete",
         "세션을 삭제할까요?": "Delete the selected session(s)?",
         "개 — 세션 기록이 영구 삭제되며 되돌릴 수 없습니다.":

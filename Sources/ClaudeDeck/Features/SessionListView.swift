@@ -298,6 +298,19 @@ private struct SessionRow: View {
         }
         .buttonStyle(.plain)
 
+        // Per-session remote-control toggle, shown for live rows in BOTH the
+        // toolbar and dashboard. Outside the activate button so the switch tap
+        // isn't swallowed by the row tap.
+        if session.live != nil {
+            HStack(spacing: 6) {
+                RemoteControlToggle(session: session)
+                Spacer()
+            }
+            .padding(.leading, 30)
+            .padding(.trailing, 10)
+            .padding(.bottom, queueEditable ? 0 : 6)
+        }
+
         // Dashboard-only queue editor, outside the activate button so its
         // controls (text field, buttons) aren't swallowed by the row tap.
         if queueEditable, session.live != nil {
@@ -320,6 +333,10 @@ private struct SessionRow: View {
             Divider()
             if session.live != nil {
                 Button(L("터미널 앞으로")) { state.activate(session) }
+                Button(settings.isRemoteControlEnabled(session.id)
+                       ? L("원격 제어 끄기") : L("원격 제어 켜기")) {
+                    state.setRemoteControl(session, enabled: !settings.isRemoteControlEnabled(session.id))
+                }
                 Menu(L("압축 (/compact)")) {
                     Button(L("기본 압축")) { state.compact(session) }
                     if !settings.compactTemplates.isEmpty {
@@ -396,6 +413,30 @@ private struct SessionRow: View {
         case .waiting: return .orange
         case .inactive: return .secondary
         }
+    }
+}
+
+/// Per-session `/remote-control` switch. Flipping it persists the state and, for
+/// a live session, sends `/remote-control on|off` to the terminal.
+private struct RemoteControlToggle: View {
+    @EnvironmentObject var state: AppState
+    @ObservedObject private var settings = AppSettings.shared
+    let session: Session
+
+    var body: some View {
+        let on = settings.isRemoteControlEnabled(session.id)
+        Toggle(isOn: Binding(
+            get: { on },
+            set: { state.setRemoteControl(session, enabled: $0) }
+        )) {
+            Label(L("원격 제어"), systemImage: "antenna.radiowaves.left.and.right")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(on ? Color.green : Color.secondary)
+        }
+        .toggleStyle(.switch)
+        .controlSize(.mini)
+        .tint(.green)
+        .help(L("켜면 이 세션에 /remote-control 명령을 보냅니다"))
     }
 }
 

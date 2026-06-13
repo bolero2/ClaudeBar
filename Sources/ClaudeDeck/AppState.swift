@@ -489,6 +489,18 @@ final class AppState: ObservableObject {
         }
     }
 
+    // MARK: - Remote control (per session)
+
+    /// Persists the per-session remote-control flag and, when the session is
+    /// live, reflects it into the terminal by sending `/remote-control on|off`.
+    /// The persisted flag survives relaunch (the slash command can only be sent
+    /// to a live terminal, so an ended session just remembers its last state).
+    func setRemoteControl(_ session: Session, enabled: Bool) {
+        AppSettings.shared.setRemoteControl(session.id, enabled: enabled)
+        guard session.live != nil else { return }
+        sendSlashCommand(session, enabled ? "/remote-control on" : "/remote-control off")
+    }
+
     /// `/compact`, optionally with a continuation instruction.
     func compact(_ session: Session, prompt: String = "") {
         let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)

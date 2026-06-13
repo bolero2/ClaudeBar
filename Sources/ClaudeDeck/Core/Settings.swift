@@ -20,6 +20,7 @@ final class AppSettings: ObservableObject {
         static let compactTemplates = "compactTemplates"      // JSON-encoded [CompactTemplate]
         static let autoCheckUpdates = "autoCheckUpdates"      // check GitHub releases on launch
         static let scheduledQueues = "scheduledQueues"        // JSON [sessionId: [ScheduledPrompt]]
+        static let remoteControlSessions = "remoteControlSessions"  // [String] session ids with remote control on
     }
 
     /// Built-in `/compact` presets, used until the user edits the list. The first
@@ -61,6 +62,11 @@ final class AppSettings: ObservableObject {
             }
         }
     }
+    /// Session ids with `/remote-control` enabled. Persisted so the toggle state
+    /// survives relaunch.
+    @Published var remoteControlSessions: [String] {
+        didSet { d.set(remoteControlSessions, forKey: Key.remoteControlSessions) }
+    }
 
     func isPinned(_ projectDirName: String) -> Bool {
         pinnedProjects.contains(projectDirName)
@@ -88,6 +94,20 @@ final class AppSettings: ObservableObject {
 
     func deleteCompactTemplate(_ id: String) {
         compactTemplates.removeAll { $0.id == id }
+    }
+
+    // MARK: - Remote control (per session)
+
+    func isRemoteControlEnabled(_ sessionId: String) -> Bool {
+        remoteControlSessions.contains(sessionId)
+    }
+
+    func setRemoteControl(_ sessionId: String, enabled: Bool) {
+        if enabled {
+            if !remoteControlSessions.contains(sessionId) { remoteControlSessions.append(sessionId) }
+        } else {
+            remoteControlSessions.removeAll { $0 == sessionId }
+        }
     }
 
     // MARK: - Scheduled prompt queues
@@ -150,6 +170,7 @@ final class AppSettings: ObservableObject {
         } else {
             scheduledQueues = [:]
         }
+        remoteControlSessions = (d.array(forKey: Key.remoteControlSessions) as? [String]) ?? []
         if let data = d.data(forKey: Key.compactTemplates),
            let decoded = try? JSONDecoder().decode([CompactTemplate].self, from: data) {
             compactTemplates = decoded
