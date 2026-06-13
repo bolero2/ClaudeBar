@@ -21,9 +21,31 @@ final class AppState: ObservableObject {
     @Published var lastRefresh: Date?
     @Published var isRefreshing = false
     @Published var isCheckingUpdate = false
-    /// Session ids whose prompt queue is armed (auto-injecting). Runtime-only —
-    /// reset on relaunch so queues never resume injecting unexpectedly.
-    @Published var runningQueues: Set<String> = []
+    /// Session ids whose prompt queue is armed (auto-injecting). Persisted so a
+    /// queue that was actively injecting when the app quit resumes after relaunch
+    /// (see `resumeArmedQueues`). The set is cleared automatically when a queue
+    /// drains, its session ends, or the user stops it — so only genuinely
+    /// in-flight queues are ever resumed.
+    @Published var runningQueues: Set<String> = [] {
+        didSet { Self.persistArmedQueues(runningQueues) }
+    }
+
+    /// UserDefaults key holding the armed-queue session ids (`[String]`).
+    private static let armedQueuesKey = "armedQueues"
+
+    private static func persistArmedQueues(_ ids: Set<String>) {
+        UserDefaults.standard.set(Array(ids), forKey: armedQueuesKey)
+    }
+
+    private static func loadArmedQueues() -> [String] {
+        (UserDefaults.standard.array(forKey: armedQueuesKey) as? [String]) ?? []
+    }
+
+    private static func unpersistArmedQueue(_ sid: String) {
+        var ids = loadArmedQueues()
+        ids.removeAll { $0 == sid }
+        UserDefaults.standard.set(ids, forKey: armedQueuesKey)
+    }
 
     /// Wired up by `AppDelegate` to open the full dashboard window.
     var onOpenDashboard: (() -> Void)?
@@ -67,6 +89,7 @@ final class AppState: ObservableObject {
                 self?.refreshUsage()
                 self?.refreshRateLimit()
             }
+        resumeArmedQueues()
     }
 
     /// Manual refresh: both cadences at once.
@@ -338,6 +361,35 @@ final class AppState: ObservableObject {
     /// Disarms; the running loop observes `runningQueues` and exits on its own.
     func stopQueue(_ sessionId: String) {
         runningQueues.remove(sessionId)
+    }
+
+    /// On launch, re-arm queues that were actively injecting when the app last
+    /// quit. Resumption is deliberately conservative: a queue is only re-armed if
+    /// its session is still live and it still has prompts pending, so we never
+    /// inject into a session the user didn't leave running.
+    func resumeArmedQueues() {
+        for sid in Self.loadArmedQueues() {
+            Task { await self.resumeArmedQueue(sid) }
+        }
+    }
+
+    /// Waits for one armed session's live process to be rediscovered after
+    /// relaunch (the terminal may still be coming up, and the first session scan
+    /// is async), then re-arms it. Drops the armed flag if the queue is already
+    /// empty or the session never returns within the grace window.
+    private func resumeArmedQueue(_ sid: String, graceSec: TimeInterval = 90) async {
+        guard !AppSettings.shared.queue(for: sid).isEmpty else {
+            Self.unpersistArmedQueue(sid); return
+        }
+        let deadline = Date().addingTimeInterval(graceSec)
+        while Date() < deadline {
+            if liveProcess(for: sid) != nil {
+                startQueue(sid)   // re-arms, re-persists, and spawns the loop
+                return
+            }
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+        }
+        Self.unpersistArmedQueue(sid)
     }
 
     /// The live process currently backing a queued session (nil once it ends).
