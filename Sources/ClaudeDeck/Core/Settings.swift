@@ -102,6 +102,13 @@ final class AppSettings: ObservableObject {
         scheduledQueues[sessionId] = q
     }
 
+    func updatePrompt(_ promptId: String, text: String, in sessionId: String) {
+        guard var q = scheduledQueues[sessionId],
+              let i = q.firstIndex(where: { $0.id == promptId }) else { return }
+        q[i].text = text
+        scheduledQueues[sessionId] = q
+    }
+
     func removePrompt(_ promptId: String, from sessionId: String) {
         guard var q = scheduledQueues[sessionId] else { return }
         q.removeAll { $0.id == promptId }

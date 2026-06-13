@@ -103,6 +103,7 @@ enum Loc {
         "예약 입력": "Scheduled input", "예약": "Queued",
         "예약된 프롬프트가 없습니다.": "No scheduled prompts.",
         "프롬프트 추가…": "Add a prompt…", "추가": "Add",
+        "프롬프트 수정…": "Edit prompt…", "수정": "Edit",
         "시작": "Start", "정지": "Stop", "개 대기": " queued",
         "실행 중 · 유휴 시 다음 프롬프트 자동 입력":
             "Running · next prompt auto-injects when idle",

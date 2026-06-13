@@ -7,6 +7,10 @@ struct PromptQueueEditor: View {
     @ObservedObject private var settings = AppSettings.shared
     let session: Session
     @State private var draft = ""
+    /// Id of the prompt currently being edited inline (nil = none), plus its
+    /// working text. Editing is dashboard-only and blocked while injecting.
+    @State private var editingId: String?
+    @State private var editDraft = ""
 
     private var queue: [ScheduledPrompt] { settings.queue(for: session.id) }
     private var running: Bool { state.isQueueRunning(session.id) }
@@ -24,22 +28,44 @@ struct PromptQueueEditor: View {
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(.secondary)
                             .frame(width: 16, alignment: .trailing)
-                        Text(prompt.text)
-                            .font(.system(size: 11))
-                            .lineLimit(2)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Button { settings.movePrompt(in: session.id, from: idx, to: idx - 1) } label: {
-                            Image(systemName: "arrow.up")
+                        if editingId == prompt.id {
+                            TextField(L("프롬프트 수정…"), text: $editDraft, axis: .vertical)
+                                .textFieldStyle(.roundedBorder)
+                                .font(.system(size: 11))
+                                .lineLimit(1...4)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .onSubmit(saveEdit)
+                            Button { saveEdit() } label: {
+                                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(editDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            Button { cancelEdit() } label: {
+                                Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            Text(prompt.text)
+                                .font(.system(size: 11))
+                                .lineLimit(2)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Button { beginEdit(prompt) } label: {
+                                Image(systemName: "pencil")
+                            }
+                            .buttonStyle(.plain).disabled(running).help(L("수정"))
+                            Button { settings.movePrompt(in: session.id, from: idx, to: idx - 1) } label: {
+                                Image(systemName: "arrow.up")
+                            }
+                            .buttonStyle(.plain).disabled(idx == 0 || running)
+                            Button { settings.movePrompt(in: session.id, from: idx, to: idx + 1) } label: {
+                                Image(systemName: "arrow.down")
+                            }
+                            .buttonStyle(.plain).disabled(idx == queue.count - 1 || running)
+                            Button { settings.removePrompt(prompt.id, from: session.id) } label: {
+                                Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain).disabled(running)
                         }
-                        .buttonStyle(.plain).disabled(idx == 0 || running)
-                        Button { settings.movePrompt(in: session.id, from: idx, to: idx + 1) } label: {
-                            Image(systemName: "arrow.down")
-                        }
-                        .buttonStyle(.plain).disabled(idx == queue.count - 1 || running)
-                        Button { settings.removePrompt(prompt.id, from: session.id) } label: {
-                            Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain).disabled(running)
                     }
                     .font(.system(size: 10))
                 }
@@ -95,6 +121,24 @@ struct PromptQueueEditor: View {
         guard !text.isEmpty else { return }
         settings.addPrompt(text, to: session.id)
         draft = ""
+    }
+
+    private func beginEdit(_ prompt: ScheduledPrompt) {
+        editingId = prompt.id
+        editDraft = prompt.text
+    }
+
+    private func saveEdit() {
+        guard let id = editingId else { return }
+        let text = editDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        settings.updatePrompt(id, text: text, in: session.id)
+        cancelEdit()
+    }
+
+    private func cancelEdit() {
+        editingId = nil
+        editDraft = ""
     }
 }
 
