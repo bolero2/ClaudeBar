@@ -365,6 +365,9 @@ private struct SessionRow: View {
                     Button(L("직접 입력…")) { state.compactWithCustomPrompt(session) }
                 }
                 Button(L("대화 비우기 (/clear)")) { state.clearSession(session) }
+                // `/exit` flushes the transcript so the session stays resumable;
+                // `kill` (SIGTERM) and Command+Q do not.
+                Button(L("안전 종료 (저장 후 종료)")) { state.safeQuit(session) }
                 Button(L("세션 종료 (kill)"), role: .destructive) { state.killSession(session) }
             } else if session.resumable {
                 Button(L("새 터미널에서 복구")) { state.activate(session) }

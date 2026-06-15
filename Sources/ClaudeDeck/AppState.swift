@@ -370,6 +370,20 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Cleanly ends a live session by typing `/exit` into its terminal. Unlike
+    /// Command+Q (which kills `claude` before it can flush) or `killSession`
+    /// (SIGTERM), `/exit` lets Claude Code write its buffered transcript to disk,
+    /// so the session stays resumable afterwards. The injected `/exit` is queued
+    /// by Claude if the session is mid-turn and runs once it returns to the prompt.
+    func safeQuit(_ session: Session) {
+        guard let live = session.live else { return }
+        Task.detached(priority: .userInitiated) {
+            _ = TerminalActivator.sendText(live, text: "/exit")
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            await MainActor.run { self.refreshSessions() }
+        }
+    }
+
     /// Permanently deletes ended sessions: their transcript JSONL, status-cache
     /// entry, and any scheduled-prompt queue. Live sessions are never deleted —
     /// the caller already filters them out, and this re-filters as a hard guard.

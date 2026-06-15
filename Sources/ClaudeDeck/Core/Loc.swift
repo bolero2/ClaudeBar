@@ -33,6 +33,7 @@ enum Loc {
         "검색 결과가 없습니다.": "No results.",
         "터미널 앞으로": "Bring terminal to front",
         "세션 종료 (kill)": "Kill session",
+        "안전 종료 (저장 후 종료)": "Quit safely (save & exit)",
         "원격 제어": "Remote control",
         "원격 제어 켜기": "Enable remote control", "원격 제어 끄기": "Disable remote control",
         "켜면 이 세션에 /remote-control 명령을 보냅니다":
