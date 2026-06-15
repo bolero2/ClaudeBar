@@ -201,7 +201,9 @@ private struct SessionRow: View {
         Button {
             if selecting { onToggleSelect() } else { state.activate(session) }
         } label: {
-            VStack(spacing: 5) {
+            // .leading so compact rows (the queue badge) align under the name /
+            // context bar instead of centering — the default VStack alignment.
+            VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 8) {
                 if selecting {
                     Image(systemName: selected ? "checkmark.circle.fill" : "circle")
@@ -418,6 +420,9 @@ private struct SessionRow: View {
             }
         }
         .padding(.horizontal, 10)
+        // Top gap so the "예약 입력" header isn't flush against the remote-control
+        // toggle row above it (that row drops its bottom padding in the dashboard).
+        .padding(.top, 6)
         .padding(.bottom, 8)
         .padding(.leading, 12)
     }
