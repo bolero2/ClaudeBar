@@ -53,17 +53,40 @@ enum TerminalActivator {
     static func openResume(cwd: String, sessionId: String,
                            resumeModel: String? = nil, permissionMode: String? = nil,
                            extendedContext: Bool = false) -> Result {
-        var cmd = "cd '\(escapeShell(cwd))' && claude --resume \(sessionId)"
+        let cmd = "cd '\(escapeShell(cwd))' && claude --resume \(sessionId)"
+        return open(cmd + sessionFlags(resumeModel: resumeModel, permissionMode: permissionMode,
+                                       extendedContext: extendedContext))
+    }
+
+    /// Opens a new terminal window and starts a *fresh* `claude` in `cwd`, carrying
+    /// over the model / 1M-context / permission mode of a session that can't be
+    /// resumed (its transcript was never flushed — see `Session.resumable`). The
+    /// user lands in a working terminal in the right place instead of hitting
+    /// `claude --resume`'s "No conversation found" dead-end.
+    @discardableResult
+    static func openFresh(cwd: String, resumeModel: String? = nil,
+                          permissionMode: String? = nil,
+                          extendedContext: Bool = false) -> Result {
+        let cmd = "cd '\(escapeShell(cwd))' && claude"
+        return open(cmd + sessionFlags(resumeModel: resumeModel, permissionMode: permissionMode,
+                                       extendedContext: extendedContext))
+    }
+
+    /// Builds the shared `--model '<base>[1m]'` / permission-mode flags appended to
+    /// both the resume and fresh-session commands.
+    private static func sessionFlags(resumeModel: String?, permissionMode: String?,
+                                     extendedContext: Bool) -> String {
+        var flags = ""
         if extendedContext, let base = resumeModel.map(stripModelSuffix), !base.isEmpty {
-            cmd += " --model '\(base)[1m]'"
+            flags += " --model '\(base)[1m]'"
         }
         switch permissionMode {
-        case "bypassPermissions": cmd += " --dangerously-skip-permissions"
-        case "plan":              cmd += " --permission-mode plan"
-        case "acceptEdits":       cmd += " --permission-mode acceptEdits"
+        case "bypassPermissions": flags += " --dangerously-skip-permissions"
+        case "plan":              flags += " --permission-mode plan"
+        case "acceptEdits":       flags += " --permission-mode acceptEdits"
         default: break
         }
-        return open(cmd)
+        return flags
     }
 
     /// Drops a trailing `[1m]` marker to get the base model id (the transcript

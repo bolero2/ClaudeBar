@@ -314,15 +314,22 @@ final class AppState: ObservableObject {
         let model = session.model
         let mode = session.permissionMode
         let extended = session.contextLimit >= SessionContext.extendedWindow
+        // A force-quit session has no flushed transcript, so `claude --resume`
+        // would dead-end in "No conversation found" — open a fresh session in the
+        // same place instead, carrying over its model / 1M / permission mode.
+        let resumable = session.resumable
         Task.detached(priority: .userInitiated) {
             if let live {
                 _ = TerminalActivator.activate(live, cwd: cwd, sessionId: id,
                                                resumeModel: model, permissionMode: mode,
                                                extendedContext: extended)
-            } else {
+            } else if resumable {
                 _ = TerminalActivator.openResume(cwd: cwd, sessionId: id,
                                                  resumeModel: model, permissionMode: mode,
                                                  extendedContext: extended)
+            } else {
+                _ = TerminalActivator.openFresh(cwd: cwd, resumeModel: model,
+                                                permissionMode: mode, extendedContext: extended)
             }
         }
     }

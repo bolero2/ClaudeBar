@@ -69,6 +69,7 @@ enum SessionScanner {
             sessions[i].contextTokens = detail.contextCurrent
             sessions[i].activity = detail.activity
             sessions[i].permissionMode = detail.permissionMode
+            sessions[i].resumable = detail.hasConversation
             let baseModel = detail.model.map(Self.stripModelSuffix)
             let configExtended = config?.projectUsesExtendedContext(
                 path: sessions[i].cwd, baseModel: baseModel) ?? false
@@ -125,7 +126,8 @@ enum SessionScanner {
 
     private static func parseTail(_ url: URL, projectDirName: String)
         -> (model: String?, gitBranch: String?, matchedCwd: String?,
-            contextCurrent: Int?, contextMax: Int, activity: String?, permissionMode: String?) {
+            contextCurrent: Int?, contextMax: Int, activity: String?,
+            permissionMode: String?, hasConversation: Bool) {
         let text = FileTail.tail(url)
         var model: String?
         var gitBranch: String?
@@ -134,6 +136,7 @@ enum SessionScanner {
         var contextMax = 0         // peak context seen in the tail
         var activity: String?      // latest assistant action (running tool / message)
         var permissionMode: String?
+        var hasConversation = false  // saw a real user/assistant turn (→ resumable)
 
         // Newest to oldest: keep the first value seen for model/branch and the
         // first (latest) assistant usage as the current context.
@@ -141,6 +144,13 @@ enum SessionScanner {
             guard let data = line.data(using: .utf8),
                   let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
             else { continue }
+
+            // A resumable transcript has at least one conversation turn. A
+            // force-quit stub holds only metadata records (e.g. `ai-title`), so
+            // it never matches here and the session is flagged non-resumable.
+            if let t = obj["type"] as? String, t == "user" || t == "assistant" {
+                hasConversation = true
+            }
 
             if let msg = obj["message"] as? [String: Any] {
                 if model == nil, let m = msg["model"] as? String { model = m }
@@ -171,7 +181,8 @@ enum SessionScanner {
                 permissionMode = p
             }
         }
-        return (model, gitBranch, matchedCwd, contextCurrent, contextMax, activity, permissionMode)
+        return (model, gitBranch, matchedCwd, contextCurrent, contextMax,
+                activity, permissionMode, hasConversation)
     }
 
     /// Summarizes an assistant message's content blocks into a one-line activity:

@@ -47,10 +47,16 @@ enum Loc {
         "예: 핵심 결정과 미해결 이슈만 남겨줘": "e.g. keep only key decisions and open issues",
         "이 세션의 대화를 비울까요?": "Clear this session's conversation?", "비우기": "Clear",
         "새 터미널에서 복구": "Resume in a new terminal",
+        "새 세션 시작 (복구 불가)": "Start a new session (not resumable)",
+        "복구 불가": "Not resumable",
+        "저장 전에 강제 종료된 세션 — claude --resume로 복구할 수 없습니다":
+            "Force-quit before its transcript was saved — can't be resumed with claude --resume",
         "Finder에서 열기": "Reveal in Finder", "경로 복사": "Copy path",
         "클릭: 해당 터미널 탭을 앞으로": "Click: bring its terminal tab to front",
         "클릭: 새 터미널에서 이 세션 복구 (claude --resume)":
             "Click: resume in a new terminal (claude --resume)",
+        "이 세션은 저장 전에 강제 종료돼 복구할 수 없습니다 — 클릭 시 같은 위치에서 새 세션 시작":
+            "Force-quit before saving, so it can't be resumed — click to start a fresh session here",
 
         // Status / modes
         "진행 중": "Working", "대기": "Waiting", "종료됨": "Ended",

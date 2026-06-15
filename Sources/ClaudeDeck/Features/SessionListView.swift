@@ -234,6 +234,20 @@ private struct SessionRow: View {
                                 .lineLimit(1)
                                 .truncationMode(.tail)
                         }
+                        // Force-quit before its transcript was flushed → not
+                        // resumable. Flagged so the row's resume affordance reads
+                        // honestly instead of dead-ending in `claude --resume`.
+                        if session.live == nil, !session.resumable {
+                            Text(L("복구 불가"))
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(Color.orange)
+                                .clipShape(Capsule())
+                                .help(L("저장 전에 강제 종료된 세션 — claude --resume로 복구할 수 없습니다"))
+                                .fixedSize()
+                        }
                     }
                     Text(session.cwd)
                         .font(.system(size: 10))
@@ -325,7 +339,9 @@ private struct SessionRow: View {
         .animation(.easeInOut(duration: 0.15), value: hovering)
         .help(session.live != nil
               ? L("클릭: 해당 터미널 탭을 앞으로")
-              : L("클릭: 새 터미널에서 이 세션 복구 (claude --resume)"))
+              : (session.resumable
+                 ? L("클릭: 새 터미널에서 이 세션 복구 (claude --resume)")
+                 : L("이 세션은 저장 전에 강제 종료돼 복구할 수 없습니다 — 클릭 시 같은 위치에서 새 세션 시작")))
         .contextMenu {
             Button(pinned ? L("즐겨찾기 제거") : L("즐겨찾기 추가")) {
                 settings.togglePin(session.projectDirName)
@@ -350,8 +366,10 @@ private struct SessionRow: View {
                 }
                 Button(L("대화 비우기 (/clear)")) { state.clearSession(session) }
                 Button(L("세션 종료 (kill)"), role: .destructive) { state.killSession(session) }
-            } else {
+            } else if session.resumable {
                 Button(L("새 터미널에서 복구")) { state.activate(session) }
+            } else {
+                Button(L("새 세션 시작 (복구 불가)")) { state.activate(session) }
             }
             Divider()
             Button(L("Finder에서 열기")) { state.revealInFinder(session.cwd) }

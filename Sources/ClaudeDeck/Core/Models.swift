@@ -44,6 +44,14 @@ struct Session: Identifiable {
     /// Latest permission mode: "default" | "plan" | "acceptEdits" | "bypassPermissions".
     var permissionMode: String?
 
+    /// Whether `claude --resume <id>` can actually restore this session — i.e. the
+    /// transcript on disk holds at least one conversation message. Claude Code 2.x
+    /// buffers the transcript in memory and only flushes it on a *clean* exit, so a
+    /// session force-quit via Command+Q (which kills `claude` before the flush)
+    /// leaves only an `ai-title` stub with no messages. Resuming such a session
+    /// fails with "No conversation found"; we open a fresh session instead.
+    var resumable: Bool = true
+
     /// Current context size = the latest assistant turn's prompt + output
     /// (input + cache_read + cache_creation + output). nil if unknown.
     var contextTokens: Int?
