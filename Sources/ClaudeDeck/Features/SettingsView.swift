@@ -52,6 +52,10 @@ struct SettingsView: View {
                     }
                 }
 
+                section(L("원격 호스트")) {
+                    RemoteHostsEditor(settings: settings)
+                }
+
                 section(L("compact 템플릿")) {
                     if allowsEditing {
                         CompactTemplatesEditor(settings: settings)
@@ -129,6 +133,52 @@ struct SettingsView: View {
                 .font(.system(size: 11, weight: .medium))
                 .monospacedDigit()
                 .frame(width: 34, alignment: .trailing)
+        }
+    }
+}
+
+/// Registers SSH hosts to probe for remote claude sessions. Lists `~/.ssh/config`
+/// aliases (toggle to enable) plus any manually-added hosts, and a field to add a
+/// host that isn't in the config. Enabling a host makes the next refresh discover
+/// every claude session on it.
+private struct RemoteHostsEditor: View {
+    @ObservedObject var settings: AppSettings
+    @State private var newHost = ""
+
+    var body: some View {
+        let aliases = SSHConfig.hostAliases()
+        let manual = settings.remoteHosts.filter { !aliases.contains($0) }
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L("켜면 새로고침마다 그 호스트의 claude 세션을 SSH로 조회해 목록에 표시합니다."))
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+
+            if aliases.isEmpty && manual.isEmpty {
+                Text(L("~/.ssh/config 에 호스트가 없습니다. 아래에서 직접 추가하세요."))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(aliases + manual, id: \.self) { host in
+                Toggle(host, isOn: Binding(
+                    get: { settings.isRemoteHostEnabled(host) },
+                    set: { settings.setRemoteHost(host, enabled: $0) }
+                ))
+                .font(.system(size: 12))
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+            }
+
+            HStack(spacing: 6) {
+                TextField(L("호스트 별칭 또는 user@host"), text: $newHost)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 12))
+                Button(L("추가")) {
+                    settings.setRemoteHost(newHost, enabled: true)
+                    newHost = ""
+                }
+                .font(.system(size: 12))
+                .disabled(newHost.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
         }
     }
 }

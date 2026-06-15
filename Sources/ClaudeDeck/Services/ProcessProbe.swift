@@ -39,6 +39,39 @@ enum ProcessProbe {
         return result
     }
 
+    /// Finds a local terminal tab running an interactive `ssh` to `host`, so a
+    /// remote session can be brought to the front instead of always opening a new
+    /// window. Requires a real controlling tty (so ClaudeDeck's own ControlMaster
+    /// mux — which has none — is skipped), and matches `host` as a whole argv
+    /// token (the alias or `user@host`).
+    static func remoteSSHProcess(forHost host: String) -> LiveProcess? {
+        let needle = host.trimmingCharacters(in: .whitespaces)
+        guard !needle.isEmpty else { return nil }
+        let out = Shell.run("/bin/ps", ["-axo", "pid=,tty=,command="])
+        for line in out.split(separator: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            let parts = trimmed.split(separator: " ", maxSplits: 2, omittingEmptySubsequences: true)
+            guard parts.count >= 3, let pid = Int32(parts[0]) else { continue }
+            let tty = String(parts[1])
+            guard tty != "??" else { continue }   // need a real tab tty
+            let command = String(parts[2])
+            let tokens = command.split(separator: " ").map(String.init)
+            guard let first = tokens.first,
+                  (first as NSString).lastPathComponent == "ssh" else { continue }
+            // The host appears as its own token (`ssh 3090f`, `ssh -t 3090f …`),
+            // or as the host part of `user@3090f`.
+            guard tokens.contains(needle)
+                    || tokens.contains(where: { $0.hasSuffix("@\(needle)") }) else { continue }
+            var proc = LiveProcess(id: pid, tty: tty, cwd: nil,
+                                   termProgram: nil, termSessionId: nil)
+            let term = terminalContext(of: pid)
+            proc.termProgram = term.program
+            proc.termSessionId = term.sessionId
+            return proc
+        }
+        return nil
+    }
+
     /// Matches the Claude Code CLI while excluding the MCP children
     /// (npm/node/playwright) and this menu bar app itself.
     private static func isClaudeCLI(_ comm: String) -> Bool {

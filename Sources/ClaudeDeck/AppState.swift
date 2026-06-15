@@ -21,6 +21,10 @@ final class AppState: ObservableObject {
     @Published var lastRefresh: Date?
     @Published var isRefreshing = false
     @Published var isCheckingUpdate = false
+    /// Last successful remote-probe results, kept so the local-first refresh can
+    /// keep remote rows on screen instead of dropping them until the next probe
+    /// returns (which would flicker every cycle).
+    private var lastRemoteSessions: [Session] = []
     /// Session ids whose prompt queue is armed (auto-injecting). Persisted so a
     /// queue that was actively injecting when the app quit resumes after relaunch
     /// (see `resumeArmedQueues`). The set is cleared automatically when a queue
@@ -115,21 +119,43 @@ final class AppState: ObservableObject {
     func refreshSessions() {
         guard !isRefreshing else { return }
         isRefreshing = true
+        let hosts = AppSettings.shared.remoteHosts
         Task.detached(priority: .utility) {
-            let sessions = SessionScanner.scan()
+            let local = SessionScanner.scan()
             let config = ConfigStore()
             let globalMCP = config?.globalMCPServers() ?? []
             let projectMCP = config?.projectMCPServers() ?? []
             let account = config?.account()
 
+            // Show local sessions immediately, but keep the LAST remote results
+            // visible until the new probe returns — otherwise remote rows would
+            // vanish and reappear every refresh (a visible flicker).
             await MainActor.run {
-                self.sessions = sessions
+                self.sessions = local + (hosts.isEmpty ? [] : self.lastRemoteSessions)
                 self.globalMCP = globalMCP
                 self.projectMCP = projectMCP
                 self.account = account
                 self.lastRefresh = Date()
+                self.evaluateSessionNotifications(local)
+            }
+
+            // Probe each registered host in parallel; a slow/offline host can't
+            // hold up the others (RemoteScanner bounds each with a timeout).
+            var remote: [Session] = []
+            if !hosts.isEmpty {
+                await withTaskGroup(of: [Session].self) { group in
+                    for h in hosts { group.addTask { RemoteScanner.scan(host: h) } }
+                    for await r in group { remote.append(contentsOf: r) }
+                }
+            }
+
+            let newRemote = remote
+            let merged = local + newRemote
+            await MainActor.run {
+                self.lastRemoteSessions = newRemote
+                self.sessions = merged
                 self.isRefreshing = false
-                self.evaluateSessionNotifications(sessions)
+                self.evaluateSessionNotifications(merged)
             }
         }
     }
@@ -309,6 +335,21 @@ final class AppState: ObservableObject {
     func activate(_ session: Session) {
         let cwd = session.cwd
         let id = session.id
+        // Remote session: if a local terminal tab is already SSHed into that host,
+        // bring it to the front; otherwise open a new terminal that SSHes in and
+        // resumes the session.
+        if let host = session.remoteHost {
+            // A synthesized live row (no transcript yet) has no real id to resume.
+            let resumeId = session.resumable ? id : nil
+            Task.detached(priority: .userInitiated) {
+                if let ssh = ProcessProbe.remoteSSHProcess(forHost: host),
+                   case .activated = TerminalActivator.bringToFront(ssh) {
+                    return
+                }
+                _ = TerminalActivator.openRemoteResume(host: host, cwd: cwd, sessionId: resumeId)
+            }
+            return
+        }
         let live = session.live
         // Reconstruct the original session's 1M window + permission mode on resume.
         let model = session.model
@@ -595,6 +636,18 @@ final class AppState: ObservableObject {
     func copyPath(_ cwd: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(cwd, forType: .string)
+    }
+
+    /// Copies the `ssh … claude --resume` one-liner for a remote session, so the
+    /// user can paste it into any terminal to reattach. No-op for local sessions.
+    func copyRemoteResumeCommand(_ session: Session) {
+        guard let host = session.remoteHost else { return }
+        let cwd = session.cwd.replacingOccurrences(of: "'", with: "'\\''")
+        // Synthesized live rows (resumable == false) have no real id yet.
+        let tail = session.resumable ? " && claude --resume \(session.id)" : ""
+        let cmd = "ssh -t \(host) 'cd '\\''\(cwd)'\\''\(tail)'"
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(cmd, forType: .string)
     }
 
     // MARK: - Self-update (GitHub Releases)

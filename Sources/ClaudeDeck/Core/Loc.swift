@@ -48,6 +48,18 @@ enum Loc {
         "예: 핵심 결정과 미해결 이슈만 남겨줘": "e.g. keep only key decisions and open issues",
         "이 세션의 대화를 비울까요?": "Clear this session's conversation?", "비우기": "Clear",
         "새 터미널에서 복구": "Resume in a new terminal",
+        // Remote (SSH) sessions
+        "원격": "Remote",
+        "SSH로 접속 (재개)": "Connect via SSH (resume)",
+        "ssh 접속 명령 복사": "Copy ssh command",
+        "클릭: SSH로 접속해 이 세션 재개 (ssh + claude --resume)":
+            "Click: connect via SSH and resume (ssh + claude --resume)",
+        "원격 호스트": "Remote hosts",
+        "켜면 새로고침마다 그 호스트의 claude 세션을 SSH로 조회해 목록에 표시합니다.":
+            "When on, each refresh probes that host over SSH and lists its claude sessions.",
+        "~/.ssh/config 에 호스트가 없습니다. 아래에서 직접 추가하세요.":
+            "No hosts in ~/.ssh/config. Add one below.",
+        "호스트 별칭 또는 user@host": "Host alias or user@host",
         "새 세션 시작 (복구 불가)": "Start a new session (not resumable)",
         "복구 불가": "Not resumable",
         "저장 전에 강제 종료된 세션 — claude --resume로 복구할 수 없습니다":

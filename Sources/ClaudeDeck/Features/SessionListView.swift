@@ -88,20 +88,24 @@ struct SessionListView: View {
         let statusOK: Bool
         switch filter {
         case .all: statusOK = true
-        case .live: statusOK = s.live != nil
-        case .ended: statusOK = s.live == nil
+        case .live: statusOK = s.isLive
+        case .ended: statusOK = !s.isLive
         }
         return textOK && statusOK
     }
 
     private var content: some View {
         let filtered = state.sessions.filter(matches)
-        let pinned = filtered.filter { settings.isPinned($0.projectDirName) }
-        let live = filtered.filter { $0.live != nil && !settings.isPinned($0.projectDirName) }
-        let recent = filtered.filter { $0.live == nil && !settings.isPinned($0.projectDirName) }.prefix(20)
+        let local = filtered.filter { $0.remoteHost == nil }
+        let pinned = local.filter { settings.isPinned($0.projectDirName) }
+        let live = local.filter { $0.live != nil && !settings.isPinned($0.projectDirName) }
+        let recent = local.filter { $0.live == nil && !settings.isPinned($0.projectDirName) }.prefix(20)
+        // Remote rows grouped under one section per host (live first), in the
+        // host order the user registered.
+        let remoteHosts = settings.remoteHosts.filter { h in filtered.contains { $0.remoteHost == h } }
 
         return VStack(alignment: .leading, spacing: 4) {
-            if pinned.isEmpty && live.isEmpty && recent.isEmpty {
+            if filtered.isEmpty {
                 EmptyHint(text: query.isEmpty ? L("세션을 찾을 수 없습니다.") : L("검색 결과가 없습니다."))
             }
             if !pinned.isEmpty {
@@ -111,6 +115,19 @@ struct SessionListView: View {
             if !live.isEmpty {
                 SectionHeader(title: L("실행 중"), count: live.count)
                 ForEach(live) { SessionRow(session: $0, queueEditable: queueEditable) }
+            }
+            // Remote hosts sit right under "실행 중" so they aren't buried below the
+            // (potentially long) recent list.
+            ForEach(remoteHosts, id: \.self) { host in
+                let rows = filtered.filter { $0.remoteHost == host }
+                    .sorted { a, b in
+                        a.isLive != b.isLive ? a.isLive : a.lastActivity > b.lastActivity
+                    }
+                    .prefix(12)
+                let liveCount = rows.filter { $0.isLive }.count
+                SectionHeader(title: "\(L("원격")): \(host)",
+                              count: liveCount > 0 ? liveCount : nil)
+                ForEach(Array(rows)) { SessionRow(session: $0, queueEditable: queueEditable) }
             }
             if !recent.isEmpty {
                 recentHeader
@@ -194,7 +211,7 @@ private struct SessionRow: View {
 
     /// Recent (ended) rows are muted to grayscale until hovered — but not while
     /// the selection checkboxes are showing.
-    private var muted: Bool { session.live == nil && !hovering && !selecting }
+    private var muted: Bool { !session.isLive && !hovering && !selecting }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -223,6 +240,18 @@ private struct SessionRow: View {
                                 .font(.system(size: 8))
                                 .foregroundStyle(.yellow)
                         }
+                        // Remote session: a host badge so it's clearly not local.
+                        if let host = session.remoteHost {
+                            Label(host, systemImage: "network")
+                                .font(.system(size: 8, weight: .bold))
+                                .labelStyle(.titleAndIcon)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(Color.blue)
+                                .clipShape(Capsule())
+                                .fixedSize()
+                        }
                         Text(session.folderName)
                             .font(.system(size: 12, weight: .medium))
                             .lineLimit(1)
@@ -239,7 +268,7 @@ private struct SessionRow: View {
                         // Force-quit before its transcript was flushed → not
                         // resumable. Flagged so the row's resume affordance reads
                         // honestly instead of dead-ending in `claude --resume`.
-                        if session.live == nil, !session.resumable {
+                        if session.remoteHost == nil, session.live == nil, !session.resumable {
                             Text(L("복구 불가"))
                                 .font(.system(size: 8, weight: .bold))
                                 .foregroundStyle(.white)
@@ -257,7 +286,7 @@ private struct SessionRow: View {
                         .lineLimit(1)
                         .truncationMode(.head)
 
-                    if session.live != nil, let activity = session.activity {
+                    if session.isLive, let activity = session.activity {
                         HStack(spacing: 4) {
                             Image(systemName: session.status == .busy
                                   ? "play.fill" : "quote.bubble")
@@ -339,17 +368,20 @@ private struct SessionRow: View {
         .opacity(muted ? 0.55 : 1.0)
         .onHover { hovering = $0 }
         .animation(.easeInOut(duration: 0.15), value: hovering)
-        .help(session.live != nil
-              ? L("클릭: 해당 터미널 탭을 앞으로")
-              : (session.resumable
-                 ? L("클릭: 새 터미널에서 이 세션 복구 (claude --resume)")
-                 : L("이 세션은 저장 전에 강제 종료돼 복구할 수 없습니다 — 클릭 시 같은 위치에서 새 세션 시작")))
+        .help(rowHelp)
         .contextMenu {
             Button(pinned ? L("즐겨찾기 제거") : L("즐겨찾기 추가")) {
                 settings.togglePin(session.projectDirName)
             }
             Divider()
-            if session.live != nil {
+            if session.remoteHost != nil {
+                // Remote rows are read-only except "connect": open a local terminal
+                // that SSHes in and resumes. Local-only actions don't apply.
+                Button(L("SSH로 접속 (재개)")) { state.activate(session) }
+                Button(L("ssh 접속 명령 복사")) { state.copyRemoteResumeCommand(session) }
+                Divider()
+                Button(L("경로 복사")) { state.copyPath(session.cwd) }
+            } else if session.live != nil {
                 Button(L("터미널 앞으로")) { state.activate(session) }
                 Button(settings.isRemoteControlEnabled(session.id)
                        ? L("원격 제어 끄기") : L("원격 제어 켜기")) {
@@ -371,21 +403,31 @@ private struct SessionRow: View {
                 // `kill` (SIGTERM) and Command+Q do not.
                 Button(L("안전 종료 (저장 후 종료)")) { state.safeQuit(session) }
                 Button(L("세션 종료 (kill)"), role: .destructive) { state.killSession(session) }
-            } else if session.resumable {
-                Button(L("새 터미널에서 복구")) { state.activate(session) }
+                Divider()
+                Button(L("Finder에서 열기")) { state.revealInFinder(session.cwd) }
+                Button(L("경로 복사")) { state.copyPath(session.cwd) }
             } else {
-                Button(L("새 세션 시작 (복구 불가)")) { state.activate(session) }
-            }
-            Divider()
-            Button(L("Finder에서 열기")) { state.revealInFinder(session.cwd) }
-            Button(L("경로 복사")) { state.copyPath(session.cwd) }
-            // Deletion is for ended sessions only; a live session must be killed
-            // first (its transcript is still being written).
-            if session.live == nil {
+                Button(session.resumable ? L("새 터미널에서 복구") : L("새 세션 시작 (복구 불가)")) {
+                    state.activate(session)
+                }
+                Divider()
+                Button(L("Finder에서 열기")) { state.revealInFinder(session.cwd) }
+                Button(L("경로 복사")) { state.copyPath(session.cwd) }
                 Divider()
                 Button(L("세션 삭제"), role: .destructive) { state.deleteSessions([session]) }
             }
         }
+    }
+
+    /// Tooltip for the row's click action, which differs per session kind.
+    private var rowHelp: String {
+        if session.remoteHost != nil {
+            return L("클릭: SSH로 접속해 이 세션 재개 (ssh + claude --resume)")
+        }
+        if session.live != nil { return L("클릭: 해당 터미널 탭을 앞으로") }
+        return session.resumable
+            ? L("클릭: 새 터미널에서 이 세션 복구 (claude --resume)")
+            : L("이 세션은 저장 전에 강제 종료돼 복구할 수 없습니다 — 클릭 시 같은 위치에서 새 세션 시작")
     }
 
     /// Collapsible "예약 입력" area shown under live rows in the dashboard.

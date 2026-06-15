@@ -21,6 +21,7 @@ final class AppSettings: ObservableObject {
         static let autoCheckUpdates = "autoCheckUpdates"      // check GitHub releases on launch
         static let scheduledQueues = "scheduledQueues"        // JSON [sessionId: [ScheduledPrompt]]
         static let remoteControlSessions = "remoteControlSessions"  // [String] session ids with remote control on
+        static let remoteHosts = "remoteHosts"                      // [String] ssh host aliases to probe for sessions
     }
 
     /// Built-in `/compact` presets, used until the user edits the list. The first
@@ -66,6 +67,24 @@ final class AppSettings: ObservableObject {
     /// survives relaunch.
     @Published var remoteControlSessions: [String] {
         didSet { d.set(remoteControlSessions, forKey: Key.remoteControlSessions) }
+    }
+    /// SSH host aliases ClaudeDeck probes for remote claude sessions. Adding one
+    /// (a `~/.ssh/config` alias or `user@host`) makes the next refresh discover
+    /// every claude session on that host automatically.
+    @Published var remoteHosts: [String] {
+        didSet { d.set(remoteHosts, forKey: Key.remoteHosts) }
+    }
+
+    func isRemoteHostEnabled(_ host: String) -> Bool { remoteHosts.contains(host) }
+
+    func setRemoteHost(_ host: String, enabled: Bool) {
+        let h = host.trimmingCharacters(in: .whitespaces)
+        guard !h.isEmpty else { return }
+        if enabled {
+            if !remoteHosts.contains(h) { remoteHosts.append(h) }
+        } else {
+            remoteHosts.removeAll { $0 == h }
+        }
     }
 
     func isPinned(_ projectDirName: String) -> Bool {
@@ -171,6 +190,7 @@ final class AppSettings: ObservableObject {
             scheduledQueues = [:]
         }
         remoteControlSessions = (d.array(forKey: Key.remoteControlSessions) as? [String]) ?? []
+        remoteHosts = (d.array(forKey: Key.remoteHosts) as? [String]) ?? []
         if let data = d.data(forKey: Key.compactTemplates),
            let decoded = try? JSONDecoder().decode([CompactTemplate].self, from: data) {
             compactTemplates = decoded

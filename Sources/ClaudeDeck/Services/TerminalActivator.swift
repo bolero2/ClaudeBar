@@ -20,25 +20,26 @@ enum TerminalActivator {
     static func activate(_ proc: LiveProcess, cwd: String, sessionId: String,
                          resumeModel: String? = nil, permissionMode: String? = nil,
                          extendedContext: Bool = false) -> Result {
-        guard let tty = proc.tty else {
-            return openResume(cwd: cwd, sessionId: sessionId, resumeModel: resumeModel,
-                              permissionMode: permissionMode, extendedContext: extendedContext)
-        }
-        let devTTY = "/dev/" + tty
-
-        let program = proc.termProgram ?? ""
-        let result: Result
-        if program.contains("Apple_Terminal") {
-            result = run(appleTerminalScript(devTTY))
-        } else if program.lowercased().contains("iterm") {
-            result = run(iTermScript(devTTY))
-        } else {
-            if case .activated = run(appleTerminalScript(devTTY)) { return .activated }
-            result = run(iTermScript(devTTY))
-        }
-        if case .activated = result { return result }
+        if case .activated = bringToFront(proc) { return .activated }
         return openResume(cwd: cwd, sessionId: sessionId, resumeModel: resumeModel,
                           permissionMode: permissionMode, extendedContext: extendedContext)
+    }
+
+    /// Brings the terminal tab that owns `proc.tty` to the front (no fallback).
+    /// Returns `.activated` on success, `.notFound`/`.noTTY` otherwise. Used for
+    /// both local live sessions and the local ssh tab of a remote session.
+    static func bringToFront(_ proc: LiveProcess) -> Result {
+        guard let tty = proc.tty, tty != "??" else { return .noTTY }
+        let devTTY = "/dev/" + tty
+        let program = proc.termProgram ?? ""
+        if program.contains("Apple_Terminal") {
+            return run(appleTerminalScript(devTTY))
+        } else if program.lowercased().contains("iterm") {
+            return run(iTermScript(devTTY))
+        } else {
+            if case .activated = run(appleTerminalScript(devTTY)) { return .activated }
+            return run(iTermScript(devTTY))
+        }
     }
 
     /// Opens a new terminal window, cd's into the session's directory and runs
@@ -93,6 +94,26 @@ enum TerminalActivator {
     /// records the base model; the 1M variant is re-requested via `--model`).
     private static func stripModelSuffix(_ model: String) -> String {
         model.hasSuffix("[1m]") ? String(model.dropLast(4)) : model
+    }
+
+    /// Opens a new local terminal window that SSHes into `host` and resumes the
+    /// remote session there: `ssh -t <host> 'cd <cwd> && claude --resume <id>'`.
+    /// The session lives on the remote, so this is the only "open" affordance for
+    /// a remote row (no local tty to bring forward).
+    @discardableResult
+    static func openRemoteResume(host: String, cwd: String, sessionId: String?) -> Result {
+        // With a known session id, resume it; without one (a synthesized live row
+        // whose transcript isn't on disk yet) just land in the directory.
+        let inner: String
+        if let id = sessionId, !id.isEmpty {
+            inner = "cd '\(escapeShell(cwd))' && claude --resume \(id)"
+        } else {
+            inner = "cd '\(escapeShell(cwd))'"
+        }
+        // The remote command is wrapped in single quotes for ssh; escape any
+        // single quotes inside it the standard '\'' way.
+        let cmd = "ssh -t \(escapeShell(host)) '\(escapeShell(inner))'"
+        return open(cmd)
     }
 
     /// Opens a new terminal window and starts a fresh `claude` session in `cwd`,

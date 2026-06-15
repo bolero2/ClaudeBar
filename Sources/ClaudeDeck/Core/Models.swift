@@ -31,6 +31,10 @@ struct Session: Identifiable {
     let id: String                 // session UUID (the JSONL filename)
     var cwd: String                // working directory (real path from JSONL when known)
     let projectDirName: String     // encoded folder name under projects/
+    /// SSH host alias this session lives on, or nil for a local session. Remote
+    /// rows are read-only except "connect" (open a local terminal that SSHes in
+    /// and `claude --resume`s); terminal-front / injection / kill don't apply.
+    var remoteHost: String? = nil
     var gitBranch: String?
     var model: String?
     var lastActivity: Date
@@ -60,6 +64,13 @@ struct Session: Identifiable {
 
     var folderName: String {
         (cwd as NSString).lastPathComponent
+    }
+
+    /// Whether this row should render as running. Local sessions are live when a
+    /// `claude` process is attached; remote sessions (no local process) are live
+    /// when the probe reported a non-inactive status.
+    var isLive: Bool {
+        live != nil || (remoteHost != nil && status != .inactive)
     }
 
     /// 0...1 fraction of the context window in use.
