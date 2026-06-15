@@ -263,6 +263,9 @@ enum SessionScanner {
             // No cache (helper not installed): fall back to newest-by-mtime.
             if let i = indicesByDir[dir]?.max(by: { sessions[$0].lastActivity < sessions[$1].lastActivity }) {
                 sessions[i].live = proc
+                if sessions[i].permissionMode == nil {
+                    sessions[i].permissionMode = proc.permissionMode
+                }
                 let idle = now.timeIntervalSince(sessions[i].lastActivity)
                 sessions[i].status = idle < 8 ? .busy : .waiting
             }
@@ -279,11 +282,19 @@ enum SessionScanner {
     private static func markLive(_ s: inout Session, proc: LiveProcess,
                                  cache: StatusCache.Entry, now: Date) {
         s.live = proc
-        if s.contextTokens == nil {
+        // The statusLine cache is the authoritative live state: Claude Code hands
+        // it the real model id (with the `[1m]` marker) and the real context-window
+        // size on every render. The on-disk transcript records only the *base*
+        // model id and an inferred window, and on 2.1.x it may lag behind a running
+        // session — so for a live row the cache wins for model + window.
+        s.contextLimit = cache.contextLimit
+        if let m = cache.model { s.model = m }
+        if cache.contextTokens > 0 || s.contextTokens == nil {
             s.contextTokens = cache.contextTokens
-            s.contextLimit = cache.contextLimit
         }
-        if s.model == nil { s.model = cache.model }
+        // Permission mode: keep the transcript's value when present (it tracks
+        // mid-session changes), else fall back to the launch flag from the process.
+        if s.permissionMode == nil { s.permissionMode = proc.permissionMode }
         s.lastActivity = max(s.lastActivity, Date(timeIntervalSince1970: cache.ts))
         let idle = now.timeIntervalSince(s.lastActivity)
         s.status = idle < 8 ? .busy : .waiting
@@ -305,6 +316,7 @@ enum SessionScanner {
             live: proc)
         s.contextTokens = cache.contextTokens
         s.contextLimit = cache.contextLimit
+        s.permissionMode = proc.permissionMode
         return s
     }
 }

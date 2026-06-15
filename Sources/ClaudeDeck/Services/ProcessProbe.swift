@@ -33,6 +33,7 @@ enum ProcessProbe {
             let term = terminalContext(of: pid)
             proc.termProgram = term.program
             proc.termSessionId = term.sessionId
+            proc.permissionMode = term.permissionMode
             result.append(proc)
         }
         return result
@@ -58,17 +59,29 @@ enum ProcessProbe {
         return nil
     }
 
-    private static func terminalContext(of pid: Int32) -> (program: String?, sessionId: String?) {
+    private static func terminalContext(of pid: Int32)
+        -> (program: String?, sessionId: String?, permissionMode: String?) {
+        // `-E` appends the environment after the argv; we pull only TERM_PROGRAM /
+        // TERM_SESSION_ID from it and the permission-mode flag from the argv — the
+        // rest (which holds secrets like CLAUDE_API_KEY) is never stored or logged.
         let out = Shell.run("/bin/ps", ["-Ewwo", "command=", "-p", "\(pid)"])
         var program: String?
         var sessionId: String?
-        for token in out.split(separator: " ") {
+        var permissionMode: String?
+        let tokens = out.split(separator: " ").map(String.init)
+        for (i, token) in tokens.enumerated() {
             if token.hasPrefix("TERM_PROGRAM=") {
                 program = String(token.dropFirst("TERM_PROGRAM=".count))
             } else if token.hasPrefix("TERM_SESSION_ID=") {
                 sessionId = String(token.dropFirst("TERM_SESSION_ID=".count))
+            } else if token == "--dangerously-skip-permissions" {
+                permissionMode = "bypassPermissions"
+            } else if token == "--permission-mode", i + 1 < tokens.count {
+                permissionMode = tokens[i + 1]   // "plan" | "acceptEdits" | …
+            } else if token.hasPrefix("--permission-mode=") {
+                permissionMode = String(token.dropFirst("--permission-mode=".count))
             }
         }
-        return (program, sessionId)
+        return (program, sessionId, permissionMode)
     }
 }

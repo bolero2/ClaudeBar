@@ -129,6 +129,11 @@ struct LiveProcess: Identifiable {
     var cwd: String?
     var termProgram: String?   // "Apple_Terminal", "iTerm.app", ...
     var termSessionId: String?
+    /// Launch permission mode parsed from the process's argv
+    /// ("bypassPermissions" | "plan" | "acceptEdits"), or nil for default. The
+    /// statusLine cache doesn't carry it, so for a live session whose transcript
+    /// isn't on disk this is the only source of its permission-mode badge.
+    var permissionMode: String?
 }
 
 // MARK: - Usage
