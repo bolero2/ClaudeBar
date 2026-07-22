@@ -4,10 +4,6 @@
 DerivedData/
 .DS_Store
 *.app/
-graph-bar-example.png
-session-usage.png
-icon-issue.png
-session-mode-ui.png
-ping-test1.png
-ping-test2.png
+/*.png
+docs/test/*-assets/
 ClaudeDeck.zip
