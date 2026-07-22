@@ -7,3 +7,12 @@ DerivedData/
 /*.png
 docs/test/*-assets/
 ClaudeDeck.zip
+
+# ── claude-project-kit adopt: 보안 패턴 추가 ──
+.env
+.env.*
+!.env.example
+*.pem
+id_rsa*
+secrets/
+.claude/settings.local.json

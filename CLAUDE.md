@@ -54,6 +54,7 @@
 | `scripts/claudedeck-statusline.sh` | 라이브 세션 컨텍스트 캐시용 statusLine 헬퍼 |
 | `docs/` | `HANDOFF.md`(세션 인수인계), `change-log/`(일자별), `test/`(QA 리포트), `images/`(mock 스크린샷) |
 | `Package.swift` | swift-tools 5.9, 단일 executableTarget |
+| `.claude/` | 킷 하네스 — `settings.json`(권한 allow/deny + 훅 등록), `hooks/`(위험 Bash 차단·시크릿 검증), `skills/`(claude-md-init·kit-adopt), `agents/`(commit-push) |
 
 ## 3. 핵심 결정 & 근거
 - **외부 의존성 0의 네이티브 Swift** (2026-06-12): 배포 단순화(zip 하나), 빌드 재현성. SwiftPM 단일 타깃.
@@ -88,6 +89,7 @@ open ClaudeDeck.app                    # 메뉴바 실행 (Dock 아이콘 없음
 | `docs/images/` | 추적됨 | MockData 기반 스크린샷만 허용 |
 | `.build/`, `*.app/`, `ClaudeDeck.zip` | ✅ | 빌드 산출물 |
 | `~/.claude/` · Keychain OAuth 토큰 | (repo 외부) | ⚠️ 런타임 읽기 대상. 내용을 문서/로그에 옮겨 적지 말 것 |
+| `.env*`, `*.pem`, `id_rsa*`, `secrets/`, `.claude/settings.local.json` | ✅ (kit adopt) | 범용 시크릿 패턴 — settings `deny`(Read)로도 이중 차단 |
 
 ## 6. 외부 문서 맵
 외부 문서 없음(Confluence/Jira/Notion 미사용, 2026-07-22 인터뷰) — repo 내 문서가 전부:
@@ -108,12 +110,12 @@ open ClaudeDeck.app                    # 메뉴바 실행 (Dock 아이콘 없음
 - v1 4탭(세션·사용량·MCP·계정) + 설정, 세션 상태/활동/권한모드/컨텍스트(200K·1M 자동 판정), 터미널 점프/resume, 알림, 전역 단축키, OAuth 자동 refresh (06-12)
 - `/compact`·`/clear` 주입 + 템플릿, 예약 프롬프트 큐(화면 감시 자동 주입), 대시보드 윈도우, 앱 아이콘, CI 릴리즈 (06-13)
 - 원격(SSH) 세션 표시·접속(무설치 인라인 프로브), 강제 종료 세션 복구불가 감지+폴백, 안전 종료(/exit), 라이브 BYPASS/1M 표시 (06-15)
+- 이 CLAUDE.md + `.claude/` 킷 + QA 리포트 커밋(`ff1e03d`), 킷 하네스 편입(`/kit-adopt` — 훅 활성화·보안 패턴·읽기 전용 allow) (07-22)
 
 미완료 / TODO:
 - 같은 호스트 다중 SSH 세션의 정확한 탭 매칭(현재 호스트 단위), 원격 슬래시 주입, IP 직접 접속 시 별칭 매칭 (06-15 범위 밖 항목)
 - resume 1M 복원 실기기 검증 (§7)
 - repo 이름 변경 여부 결정 (§3)
-- `docs/test/2026-06-15.md` + assets, `.claude/`, 이 CLAUDE.md가 미커밋 상태 → 정리 후 커밋
 
 ## 9. 환경
 - macOS 26.5 (Build 25F71), arm64 (Apple Silicon)
