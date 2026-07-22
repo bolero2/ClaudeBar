@@ -86,12 +86,22 @@ enum SessionContext {
     /// Fraction of the window at which a live session triggers the menu-bar alert.
     static let warningFraction = 0.80
 
-    /// Infers the context window. A session is treated as 1M when either it has
-    /// already exceeded 200K (a hard fact) or the project's recorded model usage
-    /// includes the matching `[1m]` variant (reliable for active sessions that
-    /// have not yet filled the standard window).
-    static func inferWindow(maxObserved: Int, configExtended: Bool) -> Int {
-        (maxObserved > standardWindow || configExtended) ? extendedWindow : standardWindow
+    /// Models whose context window is 1M by default — no `[1m]` opt-in variant
+    /// exists for them (verified against statusLine `context_limit` on 2.1.217).
+    static func modelDefaultsToExtended(_ model: String?) -> Bool {
+        guard let m = model?.lowercased() else { return false }
+        return m.contains("fable") || m.contains("mythos")
+    }
+
+    /// Infers the context window. A session is treated as 1M when it has already
+    /// exceeded 200K (a hard fact), the model's window is 1M by default
+    /// (Fable/Mythos), or the project's recorded model usage includes the
+    /// matching `[1m]` variant (reliable for active sessions that have not yet
+    /// filled the standard window).
+    static func inferWindow(maxObserved: Int, configExtended: Bool,
+                            model: String? = nil) -> Int {
+        (maxObserved > standardWindow || configExtended
+         || modelDefaultsToExtended(model)) ? extendedWindow : standardWindow
     }
 
     static func windowLabel(_ limit: Int) -> String {

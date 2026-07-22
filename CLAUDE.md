@@ -100,6 +100,8 @@ open ClaudeDeck.app                    # 메뉴바 실행 (Dock 아이콘 없음
 
 ## 7. ⚠️ 지뢰 / 주의사항
 - **Claude Code 2.1.x는 라이브 transcript를 flush하지 않음** (2026-06-15 실측): Command+Q 강제 종료 시 대화가 영구 유실되고 `ai-title` 스텁(117B)만 남음 → `--resume` 불가. 라이브 세션 데이터를 JSONL에서 직접 읽으려 하지 말 것(statusLine 캐시 사용).
+  - **정정(2026-07-22)**: 2.1.217 실측 — 활성 세션의 JSONL이 작업 중 증분 기록됨(현재 세션 transcript 1.3MB, 활동 중 mtime 계속 갱신, `find -mmin -3`에 잡힘). 6월의 "정상 종료 시에만 flush"는 이후 버전에서 변경된 것. statusLine 캐시는 구버전 호환·버퍼링 공백·강제 종료 대비로 유지(라이브 행 모델/한도는 여전히 캐시가 우선).
+- **Fable/Mythos 모델은 `[1m]` variant가 없음** (2026-07-22 실측): 1M 컨텍스트가 기본값이라 `~/.claude.json` `lastModelUsage`에 `claude-fable-5[1m]` 키가 생기지 않고, statusLine이 `context_limit=1000000`을 직접 보고. resume 시 `--model 'claude-fable-5[1m]'`을 만들면 안 됨(`TerminalActivator.sessionFlags`가 bare id 처리).
 - **resume 시 1M 컨텍스트 복원 불확실**: `--model '<base>[1m]'`을 명시 전달하지만 Claude Code가 `--resume`에서 이를 존중하는지 문서/실동작이 어긋남 → 실기기 확인 필요. 권한 모드 복원은 확실.
 - **알림 아이콘**: macOS는 Launch Services 등록 아이콘 사용 → `/Applications` 설치 후 실행해야 로고 표시(임의 경로 ad-hoc 실행 시 제네릭 아이콘).
 - **첫 실행 권한**: 터미널 점프는 Automation(AppleScript) 권한, 공식 사용량은 Keychain 접근 허용 필요.
@@ -111,6 +113,7 @@ open ClaudeDeck.app                    # 메뉴바 실행 (Dock 아이콘 없음
 - `/compact`·`/clear` 주입 + 템플릿, 예약 프롬프트 큐(화면 감시 자동 주입), 대시보드 윈도우, 앱 아이콘, CI 릴리즈 (06-13)
 - 원격(SSH) 세션 표시·접속(무설치 인라인 프로브), 강제 종료 세션 복구불가 감지+폴백, 안전 종료(/exit), 라이브 BYPASS/1M 표시 (06-15)
 - 이 CLAUDE.md + `.claude/` 킷 + QA 리포트 커밋(`ff1e03d`), 킷 하네스 편입(`/kit-adopt` — 훅 활성화·보안 패턴·읽기 전용 allow) (07-22)
+- Claude Code 2026-07 최신화: 가격표(Fable 5 $10/$50·Opus $5/$25·Haiku $1/$5, 레거시 구분), Fable/Mythos 1M 기본 윈도우 판정(로컬·원격·resume), MockData 라인업 (07-22)
 
 미완료 / TODO:
 - 같은 호스트 다중 SSH 세션의 정확한 탭 매칭(현재 호스트 단위), 원격 슬래시 주입, IP 직접 접속 시 별칭 매칭 (06-15 범위 밖 항목)

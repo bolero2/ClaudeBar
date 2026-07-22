@@ -74,7 +74,8 @@ enum SessionScanner {
             let configExtended = config?.projectUsesExtendedContext(
                 path: sessions[i].cwd, baseModel: baseModel) ?? false
             sessions[i].contextLimit = SessionContext.inferWindow(
-                maxObserved: detail.contextMax, configExtended: configExtended)
+                maxObserved: detail.contextMax, configExtended: configExtended,
+                model: baseModel)
         }
 
         attachLiveProcesses(&sessions)
@@ -83,12 +84,13 @@ enum SessionScanner {
     }
 
     /// Fills context/model from the statusLine cache for any session whose JSONL
-    /// yielded none. On Claude Code 2.1.x a session's transcript isn't written to
-    /// disk while it runs (only flushed on clean exit), so live — and even
-    /// force-closed — sessions have no `usage` on disk; `claudedeck-statusline.sh`
-    /// captures the last figures instead. Applied only when the transcript gave
-    /// nothing, so a real `usage` record always wins. (Sessions that ran before
-    /// the helper was set up have no cache and stay blank — unrecoverable.)
+    /// yielded none. Early Claude Code 2.1.x didn't write a running session's
+    /// transcript to disk (flushed only on clean exit); 2.1.217+ writes it
+    /// incrementally, but the cache still covers sessions from older builds,
+    /// buffering gaps, and force-closed sessions whose tail lacks `usage`.
+    /// Applied only when the transcript gave nothing, so a real `usage` record
+    /// always wins. (Sessions that ran before the helper was set up have no
+    /// cache and stay blank — unrecoverable.)
     private static func overlayCachedContext(_ sessions: inout [Session]) {
         for i in sessions.indices where sessions[i].contextTokens == nil {
             guard let e = StatusCache.entry(for: sessions[i].id) else { continue }

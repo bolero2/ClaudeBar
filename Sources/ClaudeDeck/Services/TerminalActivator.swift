@@ -74,12 +74,14 @@ enum TerminalActivator {
     }
 
     /// Builds the shared `--model '<base>[1m]'` / permission-mode flags appended to
-    /// both the resume and fresh-session commands.
+    /// both the resume and fresh-session commands. Models whose window is 1M by
+    /// default (Fable/Mythos) have no `[1m]` variant — they get the bare model id.
     private static func sessionFlags(resumeModel: String?, permissionMode: String?,
                                      extendedContext: Bool) -> String {
         var flags = ""
         if extendedContext, let base = resumeModel.map(stripModelSuffix), !base.isEmpty {
-            flags += " --model '\(base)[1m]'"
+            let marker = SessionContext.modelDefaultsToExtended(base) ? "" : "[1m]"
+            flags += " --model '\(base)\(marker)'"
         }
         switch permissionMode {
         case "bypassPermissions": flags += " --dangerously-skip-permissions"

@@ -147,7 +147,8 @@ def parse_tail(path):
             matched = o["cwd"]
         if pmode is None and o.get("permissionMode"):
             pmode = o["permissionMode"]
-    limit = EXT if mx > STD else STD
+    ext_default = bool(model) and ('fable' in model or 'mythos' in model)
+    limit = EXT if (mx > STD or ext_default) else STD
     return dict(model=model, gitBranch=branch, contextTokens=cur, contextLimit=limit,
                 permissionMode=pmode, activity=activity, matchedCwd=matched,
                 hasConversation=has_conv)

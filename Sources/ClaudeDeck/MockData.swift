@@ -45,7 +45,7 @@ enum MockData {
 
     private static func sessions() -> [Session] {
         [
-            session("web-dashboard", branch: "feature/charts", model: "claude-opus-4-8",
+            session("web-dashboard", branch: "feature/charts", model: "claude-fable-5",
                     ctx: 612_000, limit: 1_000_000, status: .busy, live: true, agoSec: 3,
                     activity: "Bash: npm test", mode: "bypassPermissions"),
             session("api-gateway", branch: "feature/oauth-token-refresh", model: "claude-sonnet-4-6",
@@ -60,7 +60,7 @@ enum MockData {
                     ctx: 880_000, limit: 1_000_000, status: .inactive, live: false, agoSec: 9000),
             session("docs-site", branch: "main", model: "claude-haiku-4-5-20251001",
                     ctx: 32_000, limit: 200_000, status: .inactive, live: false, agoSec: 86_400),
-            session("infra", branch: "main", model: "claude-sonnet-4-6",
+            session("infra", branch: "main", model: "claude-sonnet-5",
                     ctx: 61_000, limit: 200_000, status: .inactive, live: false, agoSec: 172_800)
         ]
     }
